@@ -1,46 +1,78 @@
 <?xml version='1.0' standalone='yes'?>
 
 <!DOCTYPE PLUGIN [
-<!ENTITY name      "dwsesmon">
-<!ENTITY author    "desertwitch">
-<!ENTITY version   "2025.11.29">
-<!ENTITY launch    "Settings/dwses">
-<!ENTITY gitURL    "https://raw.githubusercontent.com/&author;/sesmon-unRAID/main">
-<!ENTITY pluginURL "&gitURL;/plugin/&name;.plg">
-<!ENTITY pkgURL    "&gitURL;/packages">
-<!ENTITY plgPATH   "/boot/config/plugins/&name;">
-<!ENTITY plgNAME   "dwsesmon-2025.11.09-x86_64-1">
-<!ENTITY plgMD5    "c9181059749e5e07b9588b89afb850a8">
-<!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
+<!ENTITY name       "sesmon-ext">
+<!ENTITY author     "joshmans">
+<!ENTITY version    "2026.09.20">
+<!ENTITY launch     "Settings/sesext">
+<!ENTITY gitURL     "https://github.com/joshmans/unraid-sesmon-extended">
+<!ENTITY plgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/sesmon-ext.plg">
+<!ENTITY pluginURL  "&gitURL;/releases/download/&version;/&name;-&version;.txz">
+<!ENTITY pkgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/packages">
+<!ENTITY plgPATH    "/boot/config/plugins/&name;">
+<!ENTITY emhttp     "/usr/local/emhttp/plugins/&name;">
+<!ENTITY sha256     "aca6656ba70f4554103c1ec9e216440caea938cbebe6573f7816e6ea9999212d">
+<!ENTITY sesmonSHA  "b1509f17c03326d84d864a6563733089c17eab414cfbf36c1fbe88b1be95a783">
+<!ENTITY sg3SHA     "33c75c09545a695c745a92e4f8c170b82509f2b2ed419fe227167d18c82cb77c">
 ]>
 
-<PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" support="https://forums.unraid.net/topic/194941-plugin-scsi-enclosure-monitor/" min="7.0">
+<PLUGIN name="&name;" Title="SCSI Enclosure Monitor Extended" author="&author;" version="&version;" launch="&launch;" pluginURL="&plgURL;" support="&gitURL;/issues" min="7.0">
 
-<CHANGES>
-## SCSI Enclosure Monitor for UNRAID
-###2025.11.29
-- fix: segmentation fault in sg_ses (thanks Wu23333)
-###2025.11.12
-- new: sesmon service was updated to latest release version (v0.1.1)
-- fix: use --no-time with sg_ses (some devices do not support timestamps)
-###2025.11.09
-- release note: welcome to the first version of the package.
-- release note: please report any problems in the support topic.
-</CHANGES>
+<DESCRIPTION>
+Monitor SES-capable SCSI enclosures with sesmon, and configure it from a settings page: pick enclosures from the ones found on your server instead of typing SAS addresses. A fork of desertwitch's SCSI Enclosure Monitor for UNRAID.
+</DESCRIPTION>
+
+<CHANGES><![CDATA[
+# SCSI Enclosure Monitor Extended
+
+## 2026.09.20
+
+First release of the fork of desertwitch's sesmon-unRAID (upstream version 2025.11.29).
+
+- Renamed so it does not clash with the original: the plugin, its files and its service are now called `sesmon-ext`. It cannot be installed together with the original `dwsesmon` plugin; the installer stops and tells you to remove that one first.
+- The example enclosure in the default configuration is now disabled. It used to be enabled with a made-up SAS address, so a fresh install with the service switched on failed to start.
+- Package integrity is checked with SHA-256 instead of MD5.
+]]></CHANGES>
+
+<!--
+before installing: refuse to install next to the original plugin (both would claim
+the sesmon package, the service name and the same log and json folders), and clear
+our stale package records
+-->
+<FILE Run="/bin/bash">
+<INLINE>
+if [ -e /boot/config/plugins/dwsesmon.plg ] || [ -e /var/log/plugins/dwsesmon.plg ] || [ -d /usr/local/emhttp/plugins/dwsesmon ]; then
+    echo ""
+    echo "ERROR: the original SCSI Enclosure Monitor plugin (dwsesmon) is installed."
+    echo "ERROR: Remove it first (Plugins tab), then install this plugin again."
+    echo "ERROR: Your enclosure configuration is kept in /boot/config/plugins/dwsesmon/config/"
+    echo "ERROR: and can be copied into the editor of this plugin afterwards."
+    echo ""
+    exit 1
+fi
+
+# The package file name has no arch/build part, so Slackware registers it under an
+# empty name: an upgrade leaves the old version's record behind, and reinstalling
+# the same version is skipped as "already installed". Forget our old records
+# (only the records: the new package overwrites the files).
+rm -f /var/log/packages/&name;-* /var/log/scripts/&name;-*
+exit 0
+</INLINE>
+</FILE>
 
 <FILE Name="&plgPATH;/sesmon-0.1.1-x86_64-1.txz" Min="7.0" Run="upgradepkg --install-new">
 <URL>&pkgURL;/sesmon-0.1.1-x86_64-1.txz</URL>
-<MD5>146632fb75ab2de85bb7e592cd80a896</MD5>
+<SHA256>&sesmonSHA;</SHA256>
 </FILE>
 
 <FILE Name="&plgPATH;/sg3_utils-1.48-x86_64-2.txz" Min="7.0" Run="upgradepkg --install-new">
 <URL>&pkgURL;/sg3_utils-1.48-x86_64-2.txz</URL>
-<MD5>ca0129520c39b9e18e8c05e32a1220ed</MD5>
+<SHA256>&sg3SHA;</SHA256>
 </FILE>
 
-<FILE Name="&plgPATH;/&plgNAME;.txz" Min="7.0" Run="upgradepkg --install-new">
-<URL>&gitURL;/archive/&plgNAME;.txz</URL>
-<MD5>&plgMD5;</MD5>
+<FILE Name="&plgPATH;/&name;-&version;.txz" Min="7.0" Run="upgradepkg --install-new">
+<URL>&pluginURL;</URL>
+<SHA256>&sha256;</SHA256>
 </FILE>
 
 <!--
@@ -51,8 +83,8 @@ run the post-installation scripts
 echo ""
 
 killall sesmon >/dev/null 2>&amp;1
-if [ -x /etc/rc.d/rc.sesmon ]; then
-    if ! /etc/rc.d/rc.sesmon stop >/dev/null 2>&amp;1; then
+if [ -x /etc/rc.d/rc.sesmon-ext ]; then
+    if ! /etc/rc.d/rc.sesmon-ext stop >/dev/null 2>&amp;1; then
         echo "WARNING:"
         echo "WARNING: The installation script was not able to stop the service."
         echo "WARNING: IN CASE OF PROBLEMS, please REBOOT YOUR SYSTEM to complete any upgrades."
@@ -60,15 +92,18 @@ if [ -x /etc/rc.d/rc.sesmon ]; then
     fi
 fi
 
-if [ -x /usr/local/emhttp/plugins/dwsesmon/scripts/write_config ]; then
-    /usr/local/emhttp/plugins/dwsesmon/scripts/write_config
+# the previous package versions are not needed once this one is installed
+rm -f $(ls &plgPATH;/&name;-*.txz 2>/dev/null | grep -v "&version;")
+
+if [ -x &emhttp;/scripts/write_config ]; then
+    &emhttp;/scripts/write_config
 fi
 
-if [ -x /etc/rc.d/rc.sesmon ]; then
-    source "/boot/config/plugins/dwsesmon/dwsesmon.cfg"
+if [ -x /etc/rc.d/rc.sesmon-ext ]; then
+    source "&plgPATH;/&name;.cfg"
     if [ "$SERVICE" == "enable" ]; then
         echo "Starting service..."
-        /etc/rc.d/rc.sesmon start 2>&amp;1 | logger -t "rc.sesmon"
+        /etc/rc.d/rc.sesmon-ext start 2>&amp;1 | logger -t "rc.sesmon-ext"
         if [ "${PIPESTATUS[0]}" -eq 0 ]; then
             echo "Service has been started successfully."
         else
@@ -79,8 +114,9 @@ fi
 
 echo ""
 echo "-------------------------------------------------------------"
-echo " SCSI Enclosure Monitor for UNRAID has been installed."
+echo " SCSI Enclosure Monitor Extended has been installed."
 echo " Version: &version; / Plugin Maintainer: &author;"
+echo " Based on sesmon-unRAID by desertwitch."
 echo "-------------------------------------------------------------"
 echo ""
 </INLINE>
@@ -94,8 +130,8 @@ definition for uninstallation of the plugin
 echo ""
 
 killall sesmon >/dev/null 2>&amp;1
-if [ -x /etc/rc.d/rc.sesmon ]; then
-    if ! /etc/rc.d/rc.sesmon stop >/dev/null 2>&amp;1; then
+if [ -x /etc/rc.d/rc.sesmon-ext ]; then
+    if ! /etc/rc.d/rc.sesmon-ext stop >/dev/null 2>&amp;1; then
         echo "WARNING:"
         echo "WARNING: The uninstallation script was not able to stop the service."
         echo "WARNING: IN CASE OF PROBLEMS, please REBOOT YOUR SYSTEM to remove any remaining packages."
@@ -106,14 +142,21 @@ fi
 rm -f &plgPATH;/sg3*.txz
 removepkg &plgPATH;/*.txz
 rm -f &plgPATH;/*.txz
+# Unraid does not forget the package on its own: without this, reinstalling the same
+# version before a reboot is skipped as "already installed" and installs nothing
+for pkg in /var/log/packages/&name;-*; do
+    [ -e "$pkg" ] &amp;&amp; removepkg "$(basename "$pkg")" >/dev/null 2>&amp;1
+done
+rm -f /etc/rc.d/rc.sesmon-ext /etc/logrotate.d/sesmon-ext
 rm -rf &emhttp;
-rm -rf /etc/sesmon
-rm -rf /var/lib/sesmon
+rm -rf /etc/sesmon-ext
+rm -rf /var/lib/sesmon-ext
+# your saved configuration in &plgPATH;/config is kept, so a reinstall picks up where you left off
 
 echo ""
 echo "-----------------------------------------------------------"
-echo " SCSI Enclosure Monitor for UNRAID has been removed."
-echo " Version: &version; / Plugin Maintainer: &author;"
+echo " SCSI Enclosure Monitor Extended has been removed."
+echo " Version: &version;"
 echo "-----------------------------------------------------------"
 echo ""
 </INLINE>
