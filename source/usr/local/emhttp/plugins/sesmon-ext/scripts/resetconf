@@ -15,28 +15,28 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-BOOT="/boot/config/plugins/dwsesmon"
-DOCROOT="/usr/local/emhttp/plugins/dwsesmon"
+BOOT="/boot/config/plugins/sesmon-ext"
+DOCROOT="/usr/local/emhttp/plugins/sesmon-ext"
 
 echo "Resetting configuration..."
-echo "Resetting configuration..." | logger -t "sesmon-plugin"
+echo "Resetting configuration..." | logger -t "sesmon-ext"
 
-cp -f $DOCROOT/default.cfg $BOOT/dwsesmon.cfg
+cp -f $DOCROOT/default.cfg $BOOT/sesmon-ext.cfg
 
 mkdir -p $BOOT/config
-mkdir -p /etc/sesmon
-mkdir -p /var/lib/sesmon
+mkdir -p /etc/sesmon-ext
+mkdir -p /var/lib/sesmon-ext
 
 cp -rf $DOCROOT/defaults/* $BOOT/config/
-cp -rf $BOOT/config/* /etc/sesmon/
+cp -rf $BOOT/config/* /etc/sesmon-ext/
 
-chmod 644 /etc/sesmon/*
-chmod 755 /etc/sesmon/*.sh
+chmod 644 /etc/sesmon-ext/*
+chmod 755 /etc/sesmon-ext/*.sh
 
-logrotate -f /etc/logrotate.d/sesmon
+logrotate -f /etc/logrotate.d/sesmon-ext
 
-if [ -x /usr/local/emhttp/plugins/dwsesmon/scripts/write_config ]; then
-    /usr/local/emhttp/plugins/dwsesmon/scripts/write_config
+if [ -x /usr/local/emhttp/plugins/sesmon-ext/scripts/write_config ]; then
+    /usr/local/emhttp/plugins/sesmon-ext/scripts/write_config
 fi
 
 echo "Plugin is now reset to defaults, reboot or reinstall plugin in case of any problems."

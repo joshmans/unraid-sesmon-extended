@@ -5,7 +5,7 @@
 #
 # Do not change this unless you know what you are doing.
 # Advanced filtering is possible e.g. with "jq" using "SES_ALERT_JSON".
-# You can take a look at the JSON files in "/var/lib/sesmon" for reference.
+# You can take a look at the JSON files in "/var/lib/sesmon-ext" for reference.
 #
 
 # These variables are filled in by the monitoring daemon, do not assign other

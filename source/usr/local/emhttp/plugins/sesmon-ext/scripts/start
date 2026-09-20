@@ -15,5 +15,6 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-echo "Clearing devices..."
-rm -rvf /var/lib/sesmon/* | logger -t "sesmon-plugin"
+echo "Starting service..."
+/etc/rc.d/rc.sesmon-ext start 2>&1 | logger -t "rc.sesmon-ext"
+sleep 1

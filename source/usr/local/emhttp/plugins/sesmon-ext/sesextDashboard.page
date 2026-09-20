@@ -20,50 +20,50 @@ Link="nav-user"
  * included in all copies or substantial portions of the Software.
  *
  */
-require_once '/usr/local/emhttp/plugins/dwsesmon/include/dwses_config.php';
-require_once '/usr/local/emhttp/plugins/dwsesmon/include/dwses_helpers.php';
+require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_config.php';
+require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_helpers.php';
 ?>
-<?if(stripos($path, "dashboard") !== false && $dwses_dashboards == "enable"):?>
+<?if(stripos($path, "dashboard") !== false && $sesext_dashboards == "enable"):?>
 <?
 try {
-    foreach (dwses_device_folders() as $dwses_folder_name => $dwses_folder_data) {
-        $dwses_tile_name = "dwsesmon-" . $dwses_folder_name;
+    foreach (sesext_device_folders() as $sesext_folder_name => $sesext_folder_data) {
+        $sesext_tile_name = "sesmon-ext-" . $sesext_folder_name;
 
-        $dwses_folder_parsed = [];
-        if ($dwses_folder_data['parsed']) {
-            $dwses_subdir = '/var/lib/sesmon/' . $dwses_folder_name;
-            $dwses_folder_parsed = json_decode(file_get_contents($dwses_subdir . '/' . $dwses_folder_data['parsed']), true);
+        $sesext_folder_parsed = [];
+        if ($sesext_folder_data['parsed']) {
+            $sesext_subdir = '/var/lib/sesmon-ext/' . $sesext_folder_name;
+            $sesext_folder_parsed = json_decode(file_get_contents($sesext_subdir . '/' . $sesext_folder_data['parsed']), true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                $dwses_folder_parsed = [];
+                $sesext_folder_parsed = [];
             }
         } else {
             continue;
         }
 
-        $dwses_device_description = $dwses_folder_parsed['device']['description'] ?? '';
+        $sesext_device_description = $sesext_folder_parsed['device']['description'] ?? '';
 
-        $dwses_tile_text = "";
-        if($dwses_device_description) {
-            $dwses_tile_text = $dwses_device_description;
+        $sesext_tile_text = "";
+        if($sesext_device_description) {
+            $sesext_tile_text = $sesext_device_description;
         } else {
-            $dwses_tile_text = $dwses_folder_name;
+            $sesext_tile_text = $sesext_folder_name;
         }
 
         if(version_compare(parse_ini_file('/etc/unraid-version')['version'],'7.1.99', '>')) {
             // -------------------------------------------------------------
             // RESPONSIVE DASHBOARD
             // -------------------------------------------------------------
-            $mytiles[$dwses_tile_name]['column2'] =
+            $mytiles[$sesext_tile_name]['column2'] =
             <<<EOT
-            <tbody id="{$dwses_tile_name}" title="SCSI Enclosure: {$dwses_folder_name}">
+            <tbody id="{$sesext_tile_name}" title="SCSI Enclosure: {$sesext_folder_name}">
                 <tr>
                     <td>
                         <span class='tile-header'>
                             <span class='tile-header-left'>
                                 <i class='fa fa-server f32'></i>
                                 <div class='section'>
-                                    <h3 class='tile-header-main'>SCSI Enclosure: {$dwses_tile_text}</h3>
-                                    <span id='{$dwses_folder_name}-header'>
+                                    <h3 class='tile-header-main'>SCSI Enclosure: {$sesext_tile_text}</h3>
+                                    <span id='{$sesext_folder_name}-header'>
                                         <i class="fa fa-spinner fa-spin"></i> <em>Please wait, retrieving information...</em>
                                     </span>
                                 </div>
@@ -71,7 +71,7 @@ try {
                             <span class='tile-header-right'>
                                 <span class='tile-ctrl'></span>
                                 <span class='tile-header-right-controls'>
-                                <a href='/Settings/dwses' title='_(Go to SCSI Enclosure Monitor Settings)_'>
+                                <a href='/Settings/sesext' title='_(Go to SCSI Enclosure Monitor Settings)_'>
                                     <i class='fa fa-fw fa-cog control'></i>
                                 </a>
                                 </span>
@@ -88,7 +88,7 @@ try {
                         <span class='w18'>In Range (OK)</span>
                     </td>
                 </tr>
-                <tr id='{$dwses_folder_name}-body'>
+                <tr id='{$sesext_folder_name}-body'>
                     <td style="text-align:center;">
                         <i class="fa fa-spinner fa-spin"></i> <em>Please wait, retrieving information...</em>
                     </td>
@@ -99,18 +99,18 @@ try {
             // -------------------------------------------------------------
             // NON-RESPONSIVE DASHBOARD
             // -------------------------------------------------------------
-            $mytiles[$dwses_tile_name]['column2'] = <<<EOT
-            <tbody id="{$dwses_tile_name}" title="SCSI Enclosure: {$dwses_folder_name}">
+            $mytiles[$sesext_tile_name]['column2'] = <<<EOT
+            <tbody id="{$sesext_tile_name}" title="SCSI Enclosure: {$sesext_folder_name}">
                 <tr>
                     <td>
                         <i class="fa fa-server f32"></i>
                         <div class="section">
-                            SCSI Enclosure: {$dwses_tile_text}<br>
-                            <span id='{$dwses_folder_name}-header'>
+                            SCSI Enclosure: {$sesext_tile_text}<br>
+                            <span id='{$sesext_folder_name}-header'>
                                 <i class="fa fa-spinner fa-spin"></i> <em>Please wait, retrieving information...</em>
                             </span>
                         </div>
-                        <a href='/Settings/dwses' title="_(Go to SCSI Enclosure Monitor Settings)_">
+                        <a href='/Settings/sesext' title="_(Go to SCSI Enclosure Monitor Settings)_">
                             <i class='fa fa-fw fa-cog control'></i>
                         </a>
                     </td>
@@ -124,7 +124,7 @@ try {
                         <span class='w18'>In Range (OK)</span>
                     </td>
                 </tr>
-                <tr id='{$dwses_folder_name}-body'>
+                <tr id='{$sesext_folder_name}-body'>
                     <td style="text-align:center;">
                         <i class="fa fa-spinner fa-spin"></i> <em>Please wait, retrieving information...</em>
                     </td>
@@ -140,21 +140,21 @@ try {
 
 <script>
 try {
-    function dwsesFormatDate(date) {
+    function sesextFormatDate(date) {
         if (!date) return '';
 
         const dateObj = new Date(date);
         return isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleString();
     }
 
-    function dwsesFormatCount(count, color) {
+    function sesextFormatCount(count, color) {
         if (count > 0) {
             return '<span style="color:' + color + ';">' + count + '</span>';
         }
         return count;
     }
 
-    function dwsesTimeAgo(timestamp, withColor) {
+    function sesextTimeAgo(timestamp, withColor) {
         if (timestamp == undefined || timestamp == null) return '';
 
         var then = new Date(timestamp);
@@ -185,11 +185,11 @@ try {
                 return '<span>(' + timeText + ')</span>';
             }
     }
-    function dwsesDashboards() {
-        var basePath = '/plugins/dwsesmon/json';
+    function sesextDashboards() {
+        var basePath = '/plugins/sesmon-ext/json';
         var cacheBust = '?v=' + Date.now();
 
-        $.getJSON('/plugins/dwsesmon/include/dwses_list.php' + cacheBust)
+        $.getJSON('/plugins/sesmon-ext/include/sesext_list.php' + cacheBust)
             .done(function(freshData) {
                 $.each(freshData, function(folderName, folderData) {
                     if (!folderData.parsed) return;
@@ -221,21 +221,21 @@ try {
                                 var alertText = statusCounts.alerts + ' Alert' + (statusCounts.alerts > 1 ? 's' : '');
                                 $('#' + folderName + '-header').html(
                                     '<span style="color:red;">' + alertText + '</span> ' +
-                                    '| Last updated: ' + (dwsesFormatDate(data.captured_at) || 'Unknown') + ' ' + dwsesTimeAgo(data.captured_at, true)
+                                    '| Last updated: ' + (sesextFormatDate(data.captured_at) || 'Unknown') + ' ' + sesextTimeAgo(data.captured_at, true)
                                 );
                             } else {
                                 $('#' + folderName + '-header').html(
-                                    'Last updated: ' + (dwsesFormatDate(data.captured_at) || 'Unknown') + ' ' + dwsesTimeAgo(data.captured_at, true)
+                                    'Last updated: ' + (sesextFormatDate(data.captured_at) || 'Unknown') + ' ' + sesextTimeAgo(data.captured_at, true)
                                 );
                             }
 
                             $('#' + folderName + '-body').html(
                                 '<td>' +
-                                    '<span class="w18">' + dwsesFormatCount(statusCounts.alerts, 'red') + ' Alerts</span>' +
-                                    '<span class="w18">' + dwsesFormatCount(statusCounts.critical, 'red') + ' Sensors</span>' +
-                                    '<span class="w18">' + dwsesFormatCount(statusCounts.noncritical, 'orange') + ' Sensors</span>' +
-                                    '<span class="w26">' + dwsesFormatCount(statusCounts.unrecoverable, 'darkred') + ' Sensors</span>' +
-                                    '<span class="w18">' + dwsesFormatCount(statusCounts.ok, 'green') + ' Sensors</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.alerts, 'red') + ' Alerts</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.critical, 'red') + ' Sensors</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.noncritical, 'orange') + ' Sensors</span>' +
+                                    '<span class="w26">' + sesextFormatCount(statusCounts.unrecoverable, 'darkred') + ' Sensors</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.ok, 'green') + ' Sensors</span>' +
                                 '</td>'
                             );
                         })
@@ -250,11 +250,11 @@ try {
     }
 
     $(function() {
-        dwsesDashboards();
-        timers.dwsesDashboards = setInterval(dwsesDashboards, 15000);
+        sesextDashboards();
+        timers.sesextDashboards = setInterval(sesextDashboards, 15000);
     });
 } catch (error) {
-    console.error('dwsesmon dashboard error:', error);
+    console.error('sesmon-ext dashboard error:', error);
 }
 </script>
 <?endif;?>

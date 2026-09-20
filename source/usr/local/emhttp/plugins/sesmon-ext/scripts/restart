@@ -15,6 +15,6 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-echo "Starting service..."
-/etc/rc.d/rc.sesmon start 2>&1 | logger -t "rc.sesmon"
+echo "Restarting service..."
+/etc/rc.d/rc.sesmon-ext restart 2>&1 | logger -t "rc.sesmon-ext"
 sleep 1

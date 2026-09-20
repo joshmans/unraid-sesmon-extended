@@ -15,5 +15,5 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-echo "Clearing alerts..."
-rm -vf /var/lib/sesmon/*/change-* | logger -t "sesmon-plugin"
+echo "Clearing devices..."
+rm -rvf /var/lib/sesmon-ext/* | logger -t "sesmon-ext"

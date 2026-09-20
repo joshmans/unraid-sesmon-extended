@@ -1,4 +1,4 @@
-Menu="dwses:2"
+Menu="sesext:2"
 Title="Enclosure Devices"
 Tag="server"
 Markdown="false"
@@ -24,83 +24,83 @@ Markdown="false"
  */
 ?>
 <style>
-    .dwses-status-ok { color: green; }
-    .dwses-status-critical { color: red; font-weight: bold; }
-    .dwses-status-noncritical { color: orange; }
-    .dwses-status-unrecoverable { color: darkred; font-weight: bold; }
-    .dwses-status-unsupported { color: #999; }
-    .dwses-status-not-installed { color: #999; }
-    .dwses-status-unknown { color: #cc9900; }
-    .dwses-status-not-available { color: #999; }
-    .dwses-status-other { color: #999; }
+    .sesext-status-ok { color: green; }
+    .sesext-status-critical { color: red; font-weight: bold; }
+    .sesext-status-noncritical { color: orange; }
+    .sesext-status-unrecoverable { color: darkred; font-weight: bold; }
+    .sesext-status-unsupported { color: #999; }
+    .sesext-status-not-installed { color: #999; }
+    .sesext-status-unknown { color: #cc9900; }
+    .sesext-status-not-available { color: #999; }
+    .sesext-status-other { color: #999; }
 
-    .dwses-device-section-header,
-    .dwses-alert-section-header,
-    .dwses-elements-section-header {
+    .sesext-device-section-header,
+    .sesext-alert-section-header,
+    .sesext-elements-section-header {
         background-color: #e9ecef;
         border: 1px solid #dee2e6;
         border-bottom: none;
         color: #333;
     }
 
-    .dwses-device-section-header {
+    .sesext-device-section-header {
         font-size: 1.1em;
     }
 
-    .dwses-alert-section-header,
-    .dwses-elements-section-header {
+    .sesext-alert-section-header,
+    .sesext-elements-section-header {
         font-size: 1.0em;
     }
 
-    .dwses-alert-file-header th {
+    .sesext-alert-file-header th {
         background-color: #fff3cd;
         font-weight: bold;
         border-top: 1px solid #ddd;
     }
 
-    .dwses-status-summary {
+    .sesext-status-summary {
         float: right;
         font-weight: normal;
     }
 
-    .dwses-alert-count {
+    .sesext-alert-count {
         color: red;
         font-weight: bold;
     }
 
-    .dwses-time-ok {
+    .sesext-time-ok {
         color: green;
     }
 
-    .dwses-time-stale {
+    .sesext-time-stale {
         color: red;
     }
 
-    .dwses-device-section-header {
+    .sesext-device-section-header {
         cursor: pointer;
     }
 
-    .dwses-device-content {
+    .sesext-device-content {
         display: none;
     }
 </style>
 
-<div id="dwses-content"></div>
+<div id="sesext-content"></div>
 
 <script>
 try {
-    function dwses_safe(val) {
+    function sesext_safe(val) {
         return (val !== undefined && val !== null) ? val : '';
     }
 
-    function dwses_formatDate(date) {
+    function sesext_formatDate(date) {
         if (!date) return '';
 
         const dateObj = new Date(date);
         return isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleString();
     }
 
-    function dwses_sortElementId(a, b) {
+    function sesext_sortElementId(a, b) {
         var parseId = function(id) {
             var parts = id.split('#');
             return [parseInt(parts[0]), parseInt(parts[1])];
@@ -115,7 +115,7 @@ try {
         return aParts[1] - bParts[1];
     }
 
-    function dwses_getTimeAgo(timestamp, withColor) {
+    function sesext_getTimeAgo(timestamp, withColor) {
         if (timestamp == undefined || timestamp == null) return '';
 
         var then = new Date(timestamp);
@@ -128,7 +128,7 @@ try {
         var diffMins = Math.floor(diffMs / 60000);
 
         var isStale = diffMins > 10;
-        var timeClass = isStale ? 'dwses-time-stale' : 'dwses-time-ok';
+        var timeClass = isStale ? 'sesext-time-stale' : 'sesext-time-ok';
 
         var timeText = '';
         if (diffMins < 1) {
@@ -141,29 +141,29 @@ try {
         }
 
         if (withColor) {
-            return '<span class="dwses-time-ago ' + timeClass + '">(' + timeText + ')</span>';
+            return '<span class="sesext-time-ago ' + timeClass + '">(' + timeText + ')</span>';
         } else {
-            return '<span class="dwses-time-ago">(' + timeText + ')</span>';
+            return '<span class="sesext-time-ago">(' + timeText + ')</span>';
         }
     }
 
-    function dwses_getStatusClass(status) {
+    function sesext_getStatusClass(status) {
         if (status == undefined || status == null) return '';
 
         var s = Number(status);
-        if (s === 1) return 'dwses-status-ok';
-        else if (s === 2) return 'dwses-status-critical';
-        else if (s === 3) return 'dwses-status-noncritical';
-        else if (s === 4) return 'dwses-status-unrecoverable';
-        else if (s === 0) return 'dwses-status-unsupported';
-        else if (s === 5) return 'dwses-status-not-installed';
-        else if (s === 6) return 'dwses-status-unknown';
-        else if (s === 7) return 'dwses-status-not-available';
+        if (s === 1) return 'sesext-status-ok';
+        else if (s === 2) return 'sesext-status-critical';
+        else if (s === 3) return 'sesext-status-noncritical';
+        else if (s === 4) return 'sesext-status-unrecoverable';
+        else if (s === 0) return 'sesext-status-unsupported';
+        else if (s === 5) return 'sesext-status-not-installed';
+        else if (s === 6) return 'sesext-status-unknown';
+        else if (s === 7) return 'sesext-status-not-available';
 
         return '';
     }
 
-    function dwses_toggleChevron(targetId) {
+    function sesext_toggleChevron(targetId) {
         var chevronId = targetId + '-chevron';
 
         if ($(targetId).is(':visible')) {
@@ -173,16 +173,16 @@ try {
         }
     }
 
-    function dwses_buildDevice(folderName, data, alertDataArray, targetContainer) {
+    function sesext_buildDevice(folderName, data, alertDataArray, targetContainer) {
         var html = '';
 
         data = data || {};
         data.device = data.device || {};
         data.raw = data.raw || {};
 
-        var deviceContentId = 'dwses-content-' + folderName;
-        var alertSectionId = 'dwses-alerts-' + folderName;
-        var elementsSectionId = 'dwses-elements-' + folderName;
+        var deviceContentId = 'sesext-content-' + folderName;
+        var alertSectionId = 'sesext-alerts-' + folderName;
+        var elementsSectionId = 'sesext-elements-' + folderName;
 
         // Alerts section status counts (do this here because device section needs it)
         var totalAlerts = 0;
@@ -221,44 +221,44 @@ try {
         });
 
         var deviceSummary = [];
-        if (totalAlerts > 0) deviceSummary.push('<span class="dwses-alert-count">' + totalAlerts + ' Alert' + (totalAlerts > 1 ? 's' : '') + '</span>');
-        if (statusCounts[2] > 0) deviceSummary.push('<span class="dwses-status-critical">' + statusCounts[2] + ' Critical</span>');
-        if (statusCounts[3] > 0) deviceSummary.push('<span class="dwses-status-noncritical">' + statusCounts[3] + ' Noncritical</span>');
-        if (statusCounts[4] > 0) deviceSummary.push('<span class="dwses-status-unrecoverable">' + statusCounts[4] + ' Unrecoverable</span>');
-        if (statusCounts[1] > 0) deviceSummary.push('<span class="dwses-status-ok">' + statusCounts[1] + ' OK</span>');
-        if (statusCounts.other > 0) deviceSummary.push('<span class="dwses-status-other">' + statusCounts.other + ' Other</span>');
+        if (totalAlerts > 0) deviceSummary.push('<span class="sesext-alert-count">' + totalAlerts + ' Alert' + (totalAlerts > 1 ? 's' : '') + '</span>');
+        if (statusCounts[2] > 0) deviceSummary.push('<span class="sesext-status-critical">' + statusCounts[2] + ' Critical</span>');
+        if (statusCounts[3] > 0) deviceSummary.push('<span class="sesext-status-noncritical">' + statusCounts[3] + ' Noncritical</span>');
+        if (statusCounts[4] > 0) deviceSummary.push('<span class="sesext-status-unrecoverable">' + statusCounts[4] + ' Unrecoverable</span>');
+        if (statusCounts[1] > 0) deviceSummary.push('<span class="sesext-status-ok">' + statusCounts[1] + ' OK</span>');
+        if (statusCounts.other > 0) deviceSummary.push('<span class="sesext-status-other">' + statusCounts.other + ' Other</span>');
 
         var alertTimeHtml = '';
         if (alertDataArray.length > 0) {
             alertDataArray.sort(function(a, b) {
                 return new Date(b.detected_at) - new Date(a.detected_at);
             });
-            alertTimeHtml = ' - Alert: ' + dwses_formatDate(alertDataArray[0].detected_at) + ' ' + dwses_getTimeAgo(alertDataArray[0].detected_at, true);
+            alertTimeHtml = ' - Alert: ' + sesext_formatDate(alertDataArray[0].detected_at) + ' ' + sesext_getTimeAgo(alertDataArray[0].detected_at, true);
         }
 
         // Device section header
-        html += '<div class="dwses-device-section-header" data-toggle-id="' + deviceContentId + '" style="cursor: pointer;">';
+        html += '<div class="sesext-device-section-header" data-toggle-id="' + deviceContentId + '" style="cursor: pointer;">';
         html += '<i class="fa fa-chevron-right" id="'+ deviceContentId +'-chevron"></i> ';
-        html += (dwses_safe(data.device.description) || folderName) + ' ';
-        html += '(' + dwses_safe(data.device.path) + ':' + dwses_safe(data.device.address) + ') - ';
-        html += 'Updated: ' + dwses_formatDate(dwses_safe(data.captured_at)) + ' ' + dwses_getTimeAgo(data.captured_at, true) + alertTimeHtml;
-        html += '<span class="dwses-status-summary">' + deviceSummary.join(' | ') + '</span>';
+        html += (sesext_safe(data.device.description) || folderName) + ' ';
+        html += '(' + sesext_safe(data.device.path) + ':' + sesext_safe(data.device.address) + ') - ';
+        html += 'Updated: ' + sesext_formatDate(sesext_safe(data.captured_at)) + ' ' + sesext_getTimeAgo(data.captured_at, true) + alertTimeHtml;
+        html += '<span class="sesext-status-summary">' + deviceSummary.join(' | ') + '</span>';
         html += '</div>';
 
-        html += '<div id="' + deviceContentId + '" class="dwses-device-content">';
+        html += '<div id="' + deviceContentId + '" class="sesext-device-content">';
 
         // Alerts Section
         if (alertDataArray.length > 0) {
             var alertSummary = [];
-            if (alertCounts[2] > 0) alertSummary.push('<span class="dwses-status-critical">' + alertCounts[2] + ' Critical</span>');
-            if (alertCounts[3] > 0) alertSummary.push('<span class="dwses-status-noncritical">' + alertCounts[3] + ' Noncritical</span>');
-            if (alertCounts[4] > 0) alertSummary.push('<span class="dwses-status-unrecoverable">' + alertCounts[4] + ' Unrecoverable</span>');
-            if (alertCounts[1] > 0) alertSummary.push('<span class="dwses-status-ok">' + alertCounts[1] + ' OK</span>');
-            if (alertCounts.other > 0) alertSummary.push('<span class="dwses-status-other">' + alertCounts.other + ' Other</span>');
+            if (alertCounts[2] > 0) alertSummary.push('<span class="sesext-status-critical">' + alertCounts[2] + ' Critical</span>');
+            if (alertCounts[3] > 0) alertSummary.push('<span class="sesext-status-noncritical">' + alertCounts[3] + ' Noncritical</span>');
+            if (alertCounts[4] > 0) alertSummary.push('<span class="sesext-status-unrecoverable">' + alertCounts[4] + ' Unrecoverable</span>');
+            if (alertCounts[1] > 0) alertSummary.push('<span class="sesext-status-ok">' + alertCounts[1] + ' OK</span>');
+            if (alertCounts.other > 0) alertSummary.push('<span class="sesext-status-other">' + alertCounts.other + ' Other</span>');
 
             // Alerts section header
-            html += '<div class="dwses-alert-section-header">';
-            html += '<strong>ALERTS</strong> <span class="dwses-status-summary">' + alertSummary.join(' | ') + '</span>';
+            html += '<div class="sesext-alert-section-header">';
+            html += '<strong>ALERTS</strong> <span class="sesext-status-summary">' + alertSummary.join(' | ') + '</span>';
             html += '</div>';
 
             // Alerts section tables (one per alert)
@@ -266,9 +266,9 @@ try {
                 if (!alertData || !Array.isArray(alertData.changes)) return;
 
                 // Alert table header
-                html += '<table class="dwses-alert-file-table tablesorter"><thead>';
-                html += '<tr class="dwses-alert-file-header"><th colspan="10">';
-                html += '<strong>Change Detected:</strong> ' + dwses_formatDate(dwses_safe(alertData.detected_at)) + ' ' + dwses_getTimeAgo(alertData.detected_at, false);
+                html += '<table class="sesext-alert-file-table tablesorter"><thead>';
+                html += '<tr class="sesext-alert-file-header"><th colspan="10">';
+                html += '<strong>Change Detected:</strong> ' + sesext_formatDate(sesext_safe(alertData.detected_at)) + ' ' + sesext_getTimeAgo(alertData.detected_at, false);
                 html += '</th></tr>';
                 html += '<tr>';
                 html += '<th>Element ID</th><th>Description</th><th>Before Status</th><th>Before Desc</th><th>Before Flags</th>';
@@ -293,14 +293,14 @@ try {
                     if (after.amperage) after_extra.push('Amp: ' + after.amperage + 'A');
 
                     html += '<tr class="alert-change-row">';
-                    html += '<td>' + dwses_safe(change.id) + '</td><td>' + dwses_safe(change.element_type_desc) + '</td>';
-                    html += '<td>' + dwses_safe(before.status) + '</td>';
-                    html += '<td class="' + dwses_getStatusClass(before.status) + '">' + dwses_safe(before.status_desc) + '</td>';
-                    html += '<td>P:' + dwses_safe(before.prdfail) + ' D:' + dwses_safe(before.disabled) + ' S:' + dwses_safe(before.swap) + '</td>';
+                    html += '<td>' + sesext_safe(change.id) + '</td><td>' + sesext_safe(change.element_type_desc) + '</td>';
+                    html += '<td>' + sesext_safe(before.status) + '</td>';
+                    html += '<td class="' + sesext_getStatusClass(before.status) + '">' + sesext_safe(before.status_desc) + '</td>';
+                    html += '<td>P:' + sesext_safe(before.prdfail) + ' D:' + sesext_safe(before.disabled) + ' S:' + sesext_safe(before.swap) + '</td>';
                     html += '<td>' + before_extra.join(', ') + '</td>';
-                    html += '<td>' + dwses_safe(after.status) + '</td>';
-                    html += '<td class="' + dwses_getStatusClass(after.status) + '">' + dwses_safe(after.status_desc) + '</td>';
-                    html += '<td>P:' + dwses_safe(after.prdfail) + ' D:' + dwses_safe(after.disabled) + ' S:' + dwses_safe(after.swap) + '</td>';
+                    html += '<td>' + sesext_safe(after.status) + '</td>';
+                    html += '<td class="' + sesext_getStatusClass(after.status) + '">' + sesext_safe(after.status_desc) + '</td>';
+                    html += '<td>P:' + sesext_safe(after.prdfail) + ' D:' + sesext_safe(after.disabled) + ' S:' + sesext_safe(after.swap) + '</td>';
                     html += '<td>' + after_extra.join(', ') + '</td>';
                     html += '</tr>';
                 });
@@ -311,19 +311,19 @@ try {
 
         // Elements section status counts
         var elementSummary = [];
-        if (statusCounts[2] > 0) elementSummary.push('<span class="dwses-status-critical">' + statusCounts[2] + ' Critical</span>');
-        if (statusCounts[3] > 0) elementSummary.push('<span class="dwses-status-noncritical">' + statusCounts[3] + ' Noncritical</span>');
-        if (statusCounts[4] > 0) elementSummary.push('<span class="dwses-status-unrecoverable">' + statusCounts[4] + ' Unrecoverable</span>');
-        if (statusCounts[1] > 0) elementSummary.push('<span class="dwses-status-ok">' + statusCounts[1] + ' OK</span>');
-        if (statusCounts.other > 0) elementSummary.push('<span class="dwses-status-other">' + statusCounts.other + ' Other</span>');
+        if (statusCounts[2] > 0) elementSummary.push('<span class="sesext-status-critical">' + statusCounts[2] + ' Critical</span>');
+        if (statusCounts[3] > 0) elementSummary.push('<span class="sesext-status-noncritical">' + statusCounts[3] + ' Noncritical</span>');
+        if (statusCounts[4] > 0) elementSummary.push('<span class="sesext-status-unrecoverable">' + statusCounts[4] + ' Unrecoverable</span>');
+        if (statusCounts[1] > 0) elementSummary.push('<span class="sesext-status-ok">' + statusCounts[1] + ' OK</span>');
+        if (statusCounts.other > 0) elementSummary.push('<span class="sesext-status-other">' + statusCounts.other + ' Other</span>');
 
         // Elements sections header
-        html += '<div class="dwses-elements-section-header">';
-        html += '<strong>ELEMENTS</strong> <span class="dwses-status-summary">' + elementSummary.join(' | ') + '</span>';
+        html += '<div class="sesext-elements-section-header">';
+        html += '<strong>ELEMENTS</strong> <span class="sesext-status-summary">' + elementSummary.join(' | ') + '</span>';
         html += '</div>';
 
         // Elements table
-        html += '<table class="dwses-elements-table tablesorter"><thead>';
+        html += '<table class="sesext-elements-table tablesorter"><thead>';
 
         // Elements table header
         html += '<tr>';
@@ -332,7 +332,7 @@ try {
         html += '</thead><tbody>';
 
         // Elements table rows
-        var sortedKeys = Object.keys(data.raw).sort(dwses_sortElementId);
+        var sortedKeys = Object.keys(data.raw).sort(sesext_sortElementId);
         $.each(sortedKeys, function(index, elementId) {
             var element = data.raw[elementId];
             if (!element) return;
@@ -342,10 +342,10 @@ try {
             if (element.voltage) extra.push('Volt: ' + element.voltage + 'V');
             if (element.amperage) extra.push('Amp: ' + element.amperage + 'A');
 
-            html += '<tr><td>' + dwses_safe(elementId) + '</td><td>' + dwses_safe(element.element_type_desc) + '</td>';
-            html += '<td>' + dwses_safe(element.status) + '</td>';
-            html += '<td class="' + dwses_getStatusClass(element.status) + '">' + dwses_safe(element.status_desc) + '</td>';
-            html += '<td>' + dwses_safe(element.prdfail) + '</td><td>' + dwses_safe(element.disabled) + '</td><td>' + dwses_safe(element.swap) + '</td>';
+            html += '<tr><td>' + sesext_safe(elementId) + '</td><td>' + sesext_safe(element.element_type_desc) + '</td>';
+            html += '<td>' + sesext_safe(element.status) + '</td>';
+            html += '<td class="' + sesext_getStatusClass(element.status) + '">' + sesext_safe(element.status_desc) + '</td>';
+            html += '<td>' + sesext_safe(element.prdfail) + '</td><td>' + sesext_safe(element.disabled) + '</td><td>' + sesext_safe(element.swap) + '</td>';
             html += '<td>' + extra.join(', ') + '</td></tr>';
         });
 
@@ -356,9 +356,9 @@ try {
 
     let openDeviceIds = {};
 
-    async function dwses_loadData() {
+    async function sesext_loadData() {
         const cacheBust = `?v=${Date.now()}`;
-        const basePath = '/plugins/dwsesmon/json';
+        const basePath = '/plugins/sesmon-ext/json';
         const newContent = $('<div/>');
 
         $('[data-toggle-id]').each(function() {
@@ -370,7 +370,7 @@ try {
 
         let res;
         try {
-            res = await fetch(`/plugins/dwsesmon/include/dwses_list.php${cacheBust}`);
+            res = await fetch(`/plugins/sesmon-ext/include/sesext_list.php${cacheBust}`);
         } catch (e) {
             console.error('Failed to load folder list:', e);
             return;
@@ -388,7 +388,7 @@ try {
             }
         });
         if (folderArray.length === 0) {
-            $('#dwses-content').html("<i>There are currently no enclosure device reports available.</i>");
+            $('#sesext-content').html("<i>There are currently no enclosure device reports available.</i>");
             return;
         }
 
@@ -442,20 +442,20 @@ try {
         });
 
         results.forEach(result => {
-            dwses_buildDevice(result.folderName, result.data, result.alertDataArray, newContent);
+            sesext_buildDevice(result.folderName, result.data, result.alertDataArray, newContent);
         });
 
-        $('#dwses-content').html(newContent.html());
+        $('#sesext-content').html(newContent.html());
 
-        $('.dwses-device-content').each(function() {
+        $('.sesext-device-content').each(function() {
             const id = '#' + this.id;
             if (openDeviceIds[id]) {
                 $(this).show();
-                dwses_toggleChevron(id);
+                sesext_toggleChevron(id);
                 delete openDeviceIds[id];
             } else {
                 $(this).hide();
-                dwses_toggleChevron(id);
+                sesext_toggleChevron(id);
             }
         });
 
@@ -463,16 +463,16 @@ try {
     }
 
     $(document).ready(function() {
-        dwses_loadData();
-        timers.dwses_loadData = setInterval(dwses_loadData, 15000);
+        sesext_loadData();
+        timers.sesext_loadData = setInterval(sesext_loadData, 15000);
 
         $(document).on('click', '[data-toggle-id]', function() {
             var targetId = '#' + $(this).data('toggle-id');
             $(targetId).toggle();
-            dwses_toggleChevron(targetId);
+            sesext_toggleChevron(targetId);
         });
     });
 } catch (error) {
-    console.error('dwsesmon devices error:', error);
+    console.error('sesmon-ext devices error:', error);
 }
 </script>

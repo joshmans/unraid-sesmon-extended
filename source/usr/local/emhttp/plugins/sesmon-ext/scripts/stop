@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=SC1091
 #
 # Copyright Derek Macias (parts of code from NUT package)
 # Copyright macester (parts of code from NUT package)
@@ -16,11 +15,6 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 #
-
-source "/boot/config/plugins/dwsesmon/dwsesmon.cfg"
-
-echo "Writing configuration..."
-echo "Writing configuration..." | logger -t "sesmon-plugin"
-
-mkdir -p /boot/config/plugins/dwsesmon/config
-cp -rf /etc/sesmon/* /boot/config/plugins/dwsesmon/config/
+echo "Stopping service..."
+/etc/rc.d/rc.sesmon-ext stop 2>&1 | logger -t "rc.sesmon-ext"
+sleep 1

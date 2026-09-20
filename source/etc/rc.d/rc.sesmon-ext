@@ -18,12 +18,12 @@
 #
 NAME="sesmon"
 COMMAND="/usr/bin/sesmon"
-DOCROOT="/usr/local/emhttp/plugins/dwsesmon"
+DOCROOT="/usr/local/emhttp/plugins/sesmon-ext"
 
 error_at_start() {
     touch $DOCROOT/start-failed
 
-    source "/boot/config/plugins/dwsesmon/dwsesmon.cfg"
+    source "/boot/config/plugins/sesmon-ext/sesmon-ext.cfg"
     if [ "$STARTNOTIFY" == "enable" ]; then
         NOTIFY="/usr/local/emhttp/plugins/dynamix/scripts/notify"
         HOST="$(echo "$HOSTNAME" | awk '{print toupper($0)}')"
@@ -43,7 +43,7 @@ start() {
     fi
 
     echo "Starting ${NAME}..."
-    nohup "${COMMAND}" monitor /etc/sesmon/config.yaml </dev/null 2>&1 | logger -st "sesmon" >>/var/log/sesmon.log 2>&1 &
+    nohup "${COMMAND}" monitor /etc/sesmon-ext/config.yaml </dev/null 2>&1 | logger -st "sesmon" >>/var/log/sesmon-ext.log 2>&1 &
 
     sleep 2
 

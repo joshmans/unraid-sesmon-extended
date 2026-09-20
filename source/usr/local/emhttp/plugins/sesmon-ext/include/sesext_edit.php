@@ -17,8 +17,11 @@
  * included in all copies or substantial portions of the Software.
  *
  */
-require_once '/usr/local/emhttp/plugins/dwsesmon/include/dwses_helpers.php';
+$base = '/boot/config/plugins/sesmon-ext/';
+$file = realpath($_GET['editfile']);
+$editfile = 'Invalid File';
 
-header('Content-Type: application/json');
-echo json_encode(dwses_device_folders());
+if(file_exists($file))
+    $editfile = file_get_contents($file);
+echo json_encode($editfile);
 ?>

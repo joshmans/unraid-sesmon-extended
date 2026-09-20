@@ -1,4 +1,4 @@
-/var/log/sesmon.log {
+/var/log/sesmon-ext.log {
     size 1M
     create 0644 root root
     nocreate

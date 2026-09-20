@@ -1,4 +1,4 @@
-Menu="dwses:3"
+Menu="sesext:3"
 Title="Service Configuration"
 Tag="code"
 Markdown="false"
@@ -25,8 +25,8 @@ Markdown="false"
 ?>
 
 <link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.filetree.css');?>">
-<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/dwsesmon/css/codemirror.min.css');?>">
-<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/dwsesmon/css/dracula.min.css');?>">
+<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/sesmon-ext/css/codemirror.min.css');?>">
+<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/sesmon-ext/css/dracula.min.css');?>">
 
 <style type="text/css">
     .CodeMirror { border: 1px solid #eee; cursor: text; margin-top: 15px; margin-bottom: 10px; }
@@ -63,8 +63,8 @@ try {
             echo "<span style='color:red'><i class='fa fa-times-circle '></i> The {$label} has failed for the most recently saved configuration file:<br><pre>" . htmlspecialchars($result) . "</pre></span>";
         }
     }
-    run_sesmon('sesmon check /etc/sesmon/config.yaml', 'configuration check');
-    run_sesmon('sesmon test /etc/sesmon/config.yaml', 'configuration test');
+    run_sesmon('sesmon check /etc/sesmon-ext/config.yaml', 'configuration check');
+    run_sesmon('sesmon test /etc/sesmon-ext/config.yaml', 'configuration test');
 } catch (\Throwable $t) {
     error_log($t);
 }
@@ -75,7 +75,7 @@ try {
 <form id="editform" method="POST">
     <img id="editfolder" style="cursor:pointer;margin-left:10px;" src="/webGui/images/explore.png" >
 
-    <input id="editfile" type="text" name="editfile" value="" readonly="" data-picktop="/etc/sesmon" data-pickcloseonfile="true" data-pickfilter="yaml,sh" data-pickroot="/etc/sesmon" data-pickfolders="false" required="required" >
+    <input id="editfile" type="text" name="editfile" value="" readonly="" data-picktop="/etc/sesmon-ext" data-pickcloseonfile="true" data-pickfilter="yaml,sh" data-pickroot="/etc/sesmon-ext" data-pickfolders="false" required="required" >
 
     <textarea id="editdata" name="editdata" placeholder="Select a configuration file to modify."></textarea>
     <input type="hidden" name="commit" value="1" />
@@ -83,7 +83,7 @@ try {
         <dt></dt>
         <dd>
             <span>
-                <input type="button" value="Save" id="btnSubmit" class="dwses-tip" title="Save the configuration changes." />
+                <input type="button" value="Save" id="btnSubmit" class="sesext-tip" title="Save the configuration changes." />
                 <input type="button" value="Cancel" id="btnCancel" />
             </span>
         </dd>
@@ -91,15 +91,15 @@ try {
 </form>
 
 <script src="<?=autov('/webGui/javascript/jquery.filetree.js');?>"></script>
-<script src="<?=autov('/plugins/dwsesmon/js/codemirror.min.js');?>"></script>
-<script src="<?=autov('/plugins/dwsesmon/js/autorefresh.min.js');?>"></script>
-<script src="<?=autov('/plugins/dwsesmon/js/yaml.min.js');?>"></script>
+<script src="<?=autov('/plugins/sesmon-ext/js/codemirror.min.js');?>"></script>
+<script src="<?=autov('/plugins/sesmon-ext/js/autorefresh.min.js');?>"></script>
+<script src="<?=autov('/plugins/sesmon-ext/js/yaml.min.js');?>"></script>
 
 <script>
 try {
     $(function(){
         $('#btnCancel').click(function() {
-            location = '/Settings/dwses';
+            location = '/Settings/sesext';
         });
 
         var editor = CodeMirror.fromTextArea($('#editdata')[0], {
@@ -117,27 +117,27 @@ try {
 
         $('#editfile').on('change', function () {
             var Editfile = $('#editfile').val();
-            $.getJSON('/plugins/dwsesmon/include/dwses_edit.php', {editfile: Editfile}, function (data) {
+            $.getJSON('/plugins/sesmon-ext/include/sesext_edit.php', {editfile: Editfile}, function (data) {
                     editor.setValue(data);
                 }
             );
         });
 
-        $('#editfile').val("/etc/sesmon/config.yaml");
+        $('#editfile').val("/etc/sesmon-ext/config.yaml");
         var EditfileDefault = $('#editfile').val();
-        $.getJSON('/plugins/dwsesmon/include/dwses_edit.php', {editfile: EditfileDefault}, function (data) {
+        $.getJSON('/plugins/sesmon-ext/include/sesext_edit.php', {editfile: EditfileDefault}, function (data) {
                 editor.setValue(data);
             }
         );
 
         $('#btnSubmit').click(function () {
             editor.save();
-            $.post('/plugins/dwsesmon/include/dwses_save.php', $('#editform').serializeArray(), function (data) {
+            $.post('/plugins/sesmon-ext/include/sesext_save.php', $('#editform').serializeArray(), function (data) {
                 var Title = 'Configuration ';
 
                 if(data.success) {
                     swal({title: Title+'Saved', text: data.saved+'\n\nIt will be active on next service restart.', timer: 2000, showConfirmButton: false, type:'success'}, function() {
-                        location = '/Settings/dwses';
+                        location = '/Settings/sesext';
                     });
                 }
                 if(data.error) {
@@ -148,6 +148,6 @@ try {
         });
     });
 } catch (error) {
-    console.error('dwsesmon editor error:', error);
+    console.error('sesmon-ext editor error:', error);
 }
 </script>

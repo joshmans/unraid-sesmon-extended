@@ -17,6 +17,9 @@ disable_timestamps: true
 # SAS address resolves using: "/sys/class/scsi_generic/sg*/device/sas_address"
 devices:
   # Device 1 - resolve by SAS address (recommended)
+  # This is an example with a made-up address: replace it with the address of
+  # one of your enclosures ("lsscsi -tg | grep enclosu") before enabling it,
+  # otherwise the service will refuse to start (the address cannot be resolved)
   - address: "0x500a098012345678"
 
     # Type of device (0 = Device, 1 = JSON file)
@@ -27,7 +30,7 @@ devices:
     description: "JBOD"
 
     # Enable monitoring for this device
-    enabled: true
+    enabled: false
 
     # Optional: Device monitoring configuration
     # Omitted settings use defaults as shown below
@@ -63,11 +66,11 @@ devices:
       # Folder to write JSON files of this device's state and any alerts to
       # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       # !! Must be unique per device and on Unraid OS a subfolder of: !!
-      # !!     "/var/lib/sesmon/", e.g. -> "/var/lib/sesmon/JBOD"     !!
+      # !!     "/var/lib/sesmon-ext/", e.g. -> "/var/lib/sesmon-ext/JBOD"     !!
       # !! If you do not follow this, the dashboard will not see it.  !!
       # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       # Note that the folder will be created - if it does not already exist
-      output_dir: "/var/lib/sesmon/JBOD"
+      output_dir: "/var/lib/sesmon-ext/JBOD"
 
       # Output also verbose operational information as part of log output
       verbose: false
@@ -85,7 +88,7 @@ devices:
       #   $3: Device description (e.g., "JBOD")
       #   $4: Notification message in textual format
       #   $5: Change report in JSON format (where applicable)
-      script: "/etc/sesmon/notify.sh"
+      script: "/etc/sesmon-ext/notify.sh"
 
       # Optional: Notification agent configuration
       # Omitted settings use defaults as shown below

@@ -17,9 +17,9 @@
  * included in all copies or substantial portions of the Software.
  *
  */
-function dwses_device_folders() {
+function sesext_device_folders() {
     $result = [];
-    $baseDir = '/var/lib/sesmon';
+    $baseDir = '/var/lib/sesmon-ext';
 
     try {
         $subdirs = array_filter(glob($baseDir . '/*'), 'is_dir');

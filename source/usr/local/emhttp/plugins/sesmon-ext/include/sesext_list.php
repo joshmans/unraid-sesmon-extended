@@ -17,26 +17,8 @@
  * included in all copies or substantial portions of the Software.
  *
  */
-$editfile = realpath($_POST['editfile']);
-$usb_editfile = "/boot/config/plugins/dwsesmon/config/" . basename($editfile);
+require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_helpers.php';
 
-if(file_exists($editfile) && array_key_exists('editdata', $_POST)){
-    // remove carriage returns
-    $editdata = str_replace("\r", '', $_POST['editdata']);
-
-    // save conf file to USB
-    file_put_contents($usb_editfile, $editdata);
-
-    // save conf file to RAM
-    $return_var = file_put_contents($editfile, $editdata);
-}else{
-    $return_var = false;
-}
-
-if($return_var)
-    $return = ['success' => true, 'saved' => $editfile];
-else
-    $return = ['error' => $editfile];
-
-echo json_encode($return);
+header('Content-Type: application/json');
+echo json_encode(sesext_device_folders());
 ?>

@@ -1,12 +1,12 @@
         |-----handy-ruler------------------------------------------------------|
-dwsesmon:
-dwsesmon: SCSI Enclosure Monitor for UNRAID
-dwsesmon:
-dwsesmon:
-dwsesmon:
-dwsesmon:
-dwsesmon:
-dwsesmon:
-dwsesmon: compiled and packaged by desertwitch on Slackware 15.1 (x86_64)
-dwsesmon: intended for use on UNRAID installations WITHOUT ANY WARRANTIES
-dwsesmon:
+sesmon-ext:
+sesmon-ext: SCSI Enclosure Monitor for UNRAID
+sesmon-ext:
+sesmon-ext:
+sesmon-ext:
+sesmon-ext:
+sesmon-ext:
+sesmon-ext:
+sesmon-ext: compiled and packaged by desertwitch on Slackware 15.1 (x86_64)
+sesmon-ext: intended for use on UNRAID installations WITHOUT ANY WARRANTIES
+sesmon-ext:

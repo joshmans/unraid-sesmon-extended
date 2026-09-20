@@ -17,11 +17,26 @@
  * included in all copies or substantial portions of the Software.
  *
  */
-$base = '/boot/config/plugins/dwsesmon/';
-$file = realpath($_GET['editfile']);
-$editfile = 'Invalid File';
+$editfile = realpath($_POST['editfile']);
+$usb_editfile = "/boot/config/plugins/sesmon-ext/config/" . basename($editfile);
 
-if(file_exists($file))
-    $editfile = file_get_contents($file);
-echo json_encode($editfile);
+if(file_exists($editfile) && array_key_exists('editdata', $_POST)){
+    // remove carriage returns
+    $editdata = str_replace("\r", '', $_POST['editdata']);
+
+    // save conf file to USB
+    file_put_contents($usb_editfile, $editdata);
+
+    // save conf file to RAM
+    $return_var = file_put_contents($editfile, $editdata);
+}else{
+    $return_var = false;
+}
+
+if($return_var)
+    $return = ['success' => true, 'saved' => $editfile];
+else
+    $return = ['error' => $editfile];
+
+echo json_encode($return);
 ?>
