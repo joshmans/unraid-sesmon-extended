@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "sesmon-ext">
 <!ENTITY author     "joshmans">
-<!ENTITY version    "2026.09.20">
+<!ENTITY version    "2026.09.21">
 <!ENTITY launch     "Settings/sesext">
 <!ENTITY gitURL     "https://github.com/joshmans/unraid-sesmon-extended">
 <!ENTITY plgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/sesmon-ext.plg">
@@ -11,7 +11,7 @@
 <!ENTITY pkgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/packages">
 <!ENTITY plgPATH    "/boot/config/plugins/&name;">
 <!ENTITY emhttp     "/usr/local/emhttp/plugins/&name;">
-<!ENTITY sha256     "aaf14a9ebf59e70a0d4891c56126cbd172f670b22b0fcf02a6528142ab09ae67">
+<!ENTITY sha256     "695f8497078625b36fe1533899a5b3aafee8197706efbb8cd65ccce696ad2f9b">
 <!ENTITY sesmonSHA  "b1509f17c03326d84d864a6563733089c17eab414cfbf36c1fbe88b1be95a783">
 <!ENTITY sg3SHA     "33c75c09545a695c745a92e4f8c170b82509f2b2ed419fe227167d18c82cb77c">
 ]>
@@ -24,6 +24,15 @@ Monitor SES-capable SCSI enclosures with sesmon, and configure it from a setting
 
 <CHANGES><![CDATA[
 # SCSI Enclosure Monitor Extended
+
+## 2026.09.21
+
+- **Bays are named by their drives.** The Enclosure Devices page has a Drive column: "Drive bay 10" is disk22 and disk23, with model, size and temperature, each disk linked to its Unraid page. An enclosure reports the SAS address of the drive in every bay; the plugin matches it against the drives the kernel sees and the disks Unraid knows. Temperatures come from Unraid's own state file, so no disk is woken up (a spun down disk reads "standby"), and they follow the °C / °F toggle.
+- **One drive, two disks.** A dual-actuator drive (for example Seagate ST14000NM0001) appears as two disks in one bay: the bay shows the physical drive once with each disk under it. When such a bay is reported as a Warning, the tooltip says that some shelves flag this, and that the enclosure does not say why.
+- **The HBA's virtual enclosure (Broadcom VirtualSES) is shown as what it is:** the HBA's ports, not a chassis. Ports are listed in port order as "Port 12" with the drive on them (or "No drive"), the unused slots are hidden, ports cabled to another enclosure say so ("cabled to NETAPP DS424IOM12A"), and the HBA's model and firmware version are shown, on the Enclosure Devices page and on the Enclosures page.
+- **Alerts name the drives.** The notification for a bay says which disks are in it ("Affected drives - drive bay 10: disk22 + disk23 (SEAGATE ST14000NM0001, one drive presenting 2 disks)"), also for a drive that has just dropped off the bus: the last mapping seen is kept in memory while the service runs and used, marked "last known". The Alert tables show the drive too. The shipped notify.sh does this; an installed notify.sh that you never edited is replaced by the new one on install, one you edited is left alone (add the lines yourself, see the shipped file).
+- Elements an enclosure reports no status for are hidden in the Friendly view (Raw still shows everything).
+- A quiet line on the Enclosure Devices page points to Disk Location Next for a physical tray map (it opens the plugin's page if it is installed, otherwise its repository). It can be dismissed.
 
 ## 2026.09.20
 
