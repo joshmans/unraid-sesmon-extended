@@ -81,11 +81,11 @@ try {
                 </tr>
                 <tr class='header'>
                     <td>
-                        <span class='w18'>Alerts</span>
-                        <span class='w18'>Critical</span>
-                        <span class='w18'>Non-Critical</span>
-                        <span class='w26'>Unrecoverable</span>
-                        <span class='w18'>In Range (OK)</span>
+                        <span class='w18' title='Changes the enclosure reported since monitoring started'>Alerts</span>
+                        <span class='w18' title='Components the enclosure reports as critical'>Critical</span>
+                        <span class='w18' title='Components with a non-critical condition: the enclosure says something needs attention, not what'>Warning</span>
+                        <span class='w26' title='Components that have failed and cannot recover by themselves'>Failed</span>
+                        <span class='w18' title='Components working normally'>OK</span>
                     </td>
                 </tr>
                 <tr id='{$sesext_folder_name}-body'>
@@ -117,11 +117,11 @@ try {
                 </tr>
                 <tr class='header'>
                     <td>
-                        <span class='w18'>Alerts</span>
-                        <span class='w18'>Critical</span>
-                        <span class='w18'>Non-Critical</span>
-                        <span class='w26'>Unrecoverable</span>
-                        <span class='w18'>In Range (OK)</span>
+                        <span class='w18' title='Changes the enclosure reported since monitoring started'>Alerts</span>
+                        <span class='w18' title='Components the enclosure reports as critical'>Critical</span>
+                        <span class='w18' title='Components with a non-critical condition: the enclosure says something needs attention, not what'>Warning</span>
+                        <span class='w26' title='Components that have failed and cannot recover by themselves'>Failed</span>
+                        <span class='w18' title='Components working normally'>OK</span>
                     </td>
                 </tr>
                 <tr id='{$sesext_folder_name}-body'>
@@ -232,10 +232,10 @@ try {
                             $('#' + folderName + '-body').html(
                                 '<td>' +
                                     '<span class="w18">' + sesextFormatCount(statusCounts.alerts, 'red') + ' Alerts</span>' +
-                                    '<span class="w18">' + sesextFormatCount(statusCounts.critical, 'red') + ' Sensors</span>' +
-                                    '<span class="w18">' + sesextFormatCount(statusCounts.noncritical, 'orange') + ' Sensors</span>' +
-                                    '<span class="w26">' + sesextFormatCount(statusCounts.unrecoverable, 'darkred') + ' Sensors</span>' +
-                                    '<span class="w18">' + sesextFormatCount(statusCounts.ok, 'green') + ' Sensors</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.critical, 'red') + ' Components</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.noncritical, 'orange') + ' Components</span>' +
+                                    '<span class="w26">' + sesextFormatCount(statusCounts.unrecoverable, 'darkred') + ' Components</span>' +
+                                    '<span class="w18">' + sesextFormatCount(statusCounts.ok, 'green') + ' Components</span>' +
                                 '</td>'
                             );
                         })
