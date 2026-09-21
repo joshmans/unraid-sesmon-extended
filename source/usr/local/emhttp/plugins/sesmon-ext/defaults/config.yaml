@@ -1,6 +1,6 @@
 # sesmon configuration for sesmon-ext
 #
-# Nothing is monitored yet. Open Settings > SCSI Enclosure Monitor > Enclosures, tick the
+# Nothing is monitored yet. Open Settings > SCSI Enclosure Monitor Extended > Enclosures, tick the
 # enclosures to monitor and save: this file is then written for you. You can also edit it
 # by hand (see the sesmon documentation linked on that page for every setting).
 

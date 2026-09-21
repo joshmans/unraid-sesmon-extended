@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "sesmon-ext">
 <!ENTITY author     "joshmans">
-<!ENTITY version    "2026.09.21">
+<!ENTITY version    "2026.09.21a">
 <!ENTITY launch     "Settings/sesext">
 <!ENTITY gitURL     "https://github.com/joshmans/unraid-sesmon-extended">
 <!ENTITY plgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/sesmon-ext.plg">
@@ -11,7 +11,7 @@
 <!ENTITY pkgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/packages">
 <!ENTITY plgPATH    "/boot/config/plugins/&name;">
 <!ENTITY emhttp     "/usr/local/emhttp/plugins/&name;">
-<!ENTITY sha256     "695f8497078625b36fe1533899a5b3aafee8197706efbb8cd65ccce696ad2f9b">
+<!ENTITY sha256     "7a459996de138844d0e5c307686b0cd853c029ce5b4eed14ac28330bc03c4915">
 <!ENTITY sesmonSHA  "b1509f17c03326d84d864a6563733089c17eab414cfbf36c1fbe88b1be95a783">
 <!ENTITY sg3SHA     "33c75c09545a695c745a92e4f8c170b82509f2b2ed419fe227167d18c82cb77c">
 ]>
@@ -24,6 +24,11 @@ Monitor SES-capable SCSI enclosures with sesmon, and configure it from a setting
 
 <CHANGES><![CDATA[
 # SCSI Enclosure Monitor Extended
+
+## 2026.09.21a
+
+- The plugin calls itself **SCSI Enclosure Monitor Extended** on the Settings page (menu entry, page header, update check) and on the Dashboard tile's settings link, so it is not mistaken for the original plugin.
+- The Dashboard tile of the HBA's virtual enclosure is named after the HBA ("SCSI Enclosure: 430-16i SAS HBA (SAS3416)") instead of "BROADCOM VirtualSES". A description you typed yourself is kept. The Enclosures page proposes the same name when you tick the HBA.
 
 ## 2026.09.21
 

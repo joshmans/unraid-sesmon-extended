@@ -26,7 +26,7 @@ the alerts. The configuration files stay editable. Details are [below](#the-page
 
 ## Getting started
 
-1. Open **Settings → SCSI Enclosure Monitor → Enclosures**. The enclosures found on the server are listed.
+1. Open **Settings → SCSI Enclosure Monitor Extended → Enclosures**. The enclosures found on the server are listed.
 2. Tick **Monitor** on the ones you want. Optionally open **Settings** on a row for the polling and back-off
    options, and pick how alerts are sent (Unraid notifications is the default).
 3. Click **Send test notification** on a row to check that alerts reach you, then **Save and restart service**.

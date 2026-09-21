@@ -1,5 +1,10 @@
 # SCSI Enclosure Monitor Extended
 
+## 2026.09.21a
+
+- The plugin calls itself **SCSI Enclosure Monitor Extended** on the Settings page (menu entry, page header, update check) and on the Dashboard tile's settings link, so it is not mistaken for the original plugin.
+- The Dashboard tile of the HBA's virtual enclosure is named after the HBA ("SCSI Enclosure: 430-16i SAS HBA (SAS3416)") instead of "BROADCOM VirtualSES". A description you typed yourself is kept. The Enclosures page proposes the same name when you tick the HBA.
+
 ## 2026.09.21
 
 - **Bays are named by their drives.** The Enclosure Devices page has a Drive column: "Drive bay 10" is disk22 and disk23, with model, size and temperature, each disk linked to its Unraid page. An enclosure reports the SAS address of the drive in every bay; the plugin matches it against the drives the kernel sees and the disks Unraid knows. Temperatures come from Unraid's own state file, so no disk is woken up (a spun down disk reads "standby"), and they follow the °C / °F toggle.

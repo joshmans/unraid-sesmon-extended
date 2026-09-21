@@ -84,6 +84,36 @@ function sesext_hba_info($hctl, $root = null) {
             'firmware' => $fw, 'bios' => sesext_sysfs_text("$h/version_bios")];
 }
 
+/** The HBA as a person names it, from sesext_hba_info(): "430-16i SAS HBA (SAS3416)", or '' when nothing is known. */
+function sesext_hba_title($hba) {
+    if (!$hba) { return ''; }
+    $name = trim((string)($hba['name'] ?? ''));
+    $chip = trim((string)($hba['chip'] ?? ''));
+    if ($name === '') { return $chip; }
+    return ($chip !== '' && stripos($name, $chip) === false) ? "$name ($chip)" : $name;
+}
+
+/**
+ * The name for a dashboard tile: the configured description, except that the HBA's virtual enclosure is named after the
+ * HBA while its description is the generated one ("Internal HBA ports", the enclosure's own "VirtualSES" label) or empty.
+ * A description someone typed is left alone. $device is the 'device' of the parsed status (path, address).
+ */
+function sesext_tile_name($description, $fallback, $device, $disc = null) {
+    $description = trim((string)$description);
+    $generated = $description === '' || preg_match('/virtual\s*ses|^internal hba ports$/i', $description);
+    if ($generated) {
+        $disc = $disc ?? sesext_discover();
+        foreach ($disc['enclosures'] as $e) {
+            $same = ($e['address'] !== null && $e['address'] === ($device['address'] ?? null)) || $e['dev'] === ($device['path'] ?? null);
+            if ($same && $e['kind'] === 'hba') {
+                $t = sesext_hba_title($e['hba']);
+                if ($t !== '') { return $t; }
+            }
+        }
+    }
+    return $description !== '' ? $description : $fallback;
+}
+
 /**
  * The discovery result:
  *   nodes       every sg node (see above)
@@ -112,6 +142,7 @@ function sesext_discover($root = null) {
             'use'    => $unique ? ['address', $n['address']] : ['device', $n['dev']],
             'kind'   => $kind,
             'hba'    => $kind === 'hba' ? sesext_hba_info($n['hctl'], $root) : null,
+            'title'  => $kind === 'hba' ? (sesext_hba_title(sesext_hba_info($n['hctl'], $root)) ?: 'Internal HBA ports') : '',
             'note'   => $kind === 'hba' ? "The HBA's own virtual enclosure: it lists the HBA's ports and the drives on them, not a chassis (no fans, power supplies or temperatures). Monitoring it alerts you when a drive drops off a port." : '',
         ];
     }

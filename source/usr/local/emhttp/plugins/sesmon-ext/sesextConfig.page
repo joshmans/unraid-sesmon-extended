@@ -170,7 +170,7 @@ try {
             var all = $.extend({}, S.defaults.config, S.defaults.notifier);
             Object.keys(all).forEach(function (k) { pre[k] = presetFor(k, all[k]); });
             rows.push({orig: null, kind: 'device', address: e.use[0] === 'address' ? e.use[1] : '', device: e.use[0] === 'device' ? e.use[1] : '',
-                description: e.kind === 'hba' ? 'Internal HBA ports' : e.label, enabled: false, config: $.extend({}, S.defaults.config), notifier: {mode: 'unraid', script: S.notify_script, config: $.extend({}, S.defaults.notifier)},
+                description: e.kind === 'hba' ? e.title : e.label, enabled: false, config: $.extend({}, S.defaults.config), notifier: {mode: 'unraid', script: S.notify_script, config: $.extend({}, S.defaults.notifier)},
                 pre: pre, status: {level: 'off', code: 'available', message: 'Not monitored', resolved: e.dev}, removed: false, open: false, fresh: e});
         });
     }
@@ -303,7 +303,7 @@ try {
         var r = rows[+$(this).data('i')], e = S.enclosures[+this.value];
         r.address = e.use[0] === 'address' ? e.use[1] : ''; r.device = e.use[0] === 'device' ? e.use[1] : '';
         r.fresh = e; r.status = {level: 'off', code: 'changed', message: 'Will use ' + e.dev + ' when saved', resolved: e.dev};
-        if (!r.description || /^(JBOD\d*)$/.test(r.description)) { r.description = e.label; }
+        if (!r.description || /^(JBOD\d*)$/.test(r.description)) { r.description = e.kind === 'hba' ? e.title : e.label; }
         r.enabled = true; setDirty(true); render();
     });
     on('change', '.sx-preset', function () {

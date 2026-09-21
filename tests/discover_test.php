@@ -61,6 +61,22 @@ eq($plain['use'], ['device', '/dev/sg42'], 'synthetic: ...is offered by device p
 eq(sesext_device_status(['enabled' => true, 'device' => '/dev/sg42'], $d2)[1], 'ok-path', 'synthetic: path-only device resolves');
 eq(sesext_device_status(['enabled' => true, 'address' => '0x5000000000000abc'], $d2)[1], 'ambiguous', 'synthetic: dual-pathed address is ambiguous');
 
+// ---- dashboard tile names: the HBA's virtual enclosure is named after the HBA
+$hbaDev = ['path' => '/dev/sg8', 'address' => '0x300705b01098e070'];
+$shelfDev = ['path' => '/dev/sg34', 'address' => '0x500a098008561d10'];
+eq($d['enclosures'][0]['title'], '430-16i SAS HBA (SAS3416)', 'title: the HBA model (board and chip) names the virtual enclosure');
+eq($d['enclosures'][1]['title'], '', 'title: a shelf has none');
+eq(sesext_tile_name('BROADCOM VirtualSES', 'jbod', $hbaDev, $d), '430-16i SAS HBA (SAS3416)', 'tile: the VirtualSES label is replaced by the HBA model');
+eq(sesext_tile_name('Internal HBA ports', 'jbod', $hbaDev, $d), '430-16i SAS HBA (SAS3416)', 'tile: so is the generated description');
+eq(sesext_tile_name('', 'jbod', $hbaDev, $d), '430-16i SAS HBA (SAS3416)', 'tile: and an empty description');
+eq(sesext_tile_name('Rack HBA', 'jbod', $hbaDev, $d), 'Rack HBA', 'tile: a description someone typed is kept');
+eq(sesext_tile_name('NETAPP DS424IOM12A', 'jbod', $shelfDev, $d), 'NETAPP DS424IOM12A', 'tile: a shelf keeps its description');
+eq(sesext_tile_name('', 'jbod', $shelfDev, $d), 'jbod', 'tile: a shelf without a description is named by its folder');
+eq(sesext_tile_name('BROADCOM VirtualSES', 'jbod', ['path' => '/dev/sg99', 'address' => '0x1'], $d), 'BROADCOM VirtualSES', 'tile: an enclosure that is gone keeps what it had');
+eq(sesext_hba_title(['name' => '430-16i SAS HBA SAS3416', 'chip' => 'SAS3416']), '430-16i SAS HBA SAS3416', 'title: the chip is not repeated');
+eq(sesext_hba_title(['name' => '', 'chip' => 'SAS3416']), 'SAS3416', 'title: chip only');
+eq(sesext_hba_title(null), '', 'title: no HBA information');
+
 // ---- an empty server
 $d3 = sesext_discover(sesext_fixture_root([]));
 eq($d3['enclosures'], [], 'empty: no enclosures');

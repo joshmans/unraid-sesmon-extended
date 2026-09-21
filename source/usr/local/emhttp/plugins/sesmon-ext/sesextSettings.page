@@ -240,7 +240,7 @@ try {
         });
 
         if ( typeof caPluginUpdateCheck === "function" ) {
-            caPluginUpdateCheck("sesmon-ext.plg",{name:"SCSI Enclosure Monitor"});
+            caPluginUpdateCheck("sesmon-ext.plg",{name:"SCSI Enclosure Monitor Extended"});
         }
     });
 } catch (error) {

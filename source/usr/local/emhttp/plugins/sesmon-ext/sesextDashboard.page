@@ -22,6 +22,7 @@ Link="nav-user"
  */
 require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_config.php';
 require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_helpers.php';
+require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_discover.php';
 ?>
 <?if(stripos($path, "dashboard") !== false && $sesext_dashboards == "enable"):?>
 <?
@@ -42,12 +43,7 @@ try {
 
         $sesext_device_description = $sesext_folder_parsed['device']['description'] ?? '';
 
-        $sesext_tile_text = "";
-        if($sesext_device_description) {
-            $sesext_tile_text = $sesext_device_description;
-        } else {
-            $sesext_tile_text = $sesext_folder_name;
-        }
+        $sesext_tile_text = sesext_tile_name($sesext_device_description, $sesext_folder_name, $sesext_folder_parsed['device'] ?? []);
 
         if(version_compare(parse_ini_file('/etc/unraid-version')['version'],'7.1.99', '>')) {
             // -------------------------------------------------------------
@@ -71,7 +67,7 @@ try {
                             <span class='tile-header-right'>
                                 <span class='tile-ctrl'></span>
                                 <span class='tile-header-right-controls'>
-                                <a href='/Settings/sesext' title='_(Go to SCSI Enclosure Monitor Settings)_'>
+                                <a href='/Settings/sesext' title='_(Go to SCSI Enclosure Monitor Extended Settings)_'>
                                     <i class='fa fa-fw fa-cog control'></i>
                                 </a>
                                 </span>
@@ -110,7 +106,7 @@ try {
                                 <i class="fa fa-spinner fa-spin"></i> <em>Please wait, retrieving information...</em>
                             </span>
                         </div>
-                        <a href='/Settings/sesext' title="_(Go to SCSI Enclosure Monitor Settings)_">
+                        <a href='/Settings/sesext' title="_(Go to SCSI Enclosure Monitor Extended Settings)_">
                             <i class='fa fa-fw fa-cog control'></i>
                         </a>
                     </td>
