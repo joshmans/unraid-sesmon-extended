@@ -8,6 +8,7 @@ done
 # the page's JavaScript logic is tested with node when it is available
 if command -v node >/dev/null 2>&1; then
   for t in *_test.js; do
+    [ -e "$t" ] || continue  # no JavaScript tests: the pattern stays unexpanded
     node "$t" || rc=1
   done
 else
