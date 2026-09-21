@@ -1,0 +1,44 @@
+[0:0:0:0]    disk    sas:0x5000cca2523fb131          /dev/sda   /dev/sg0 
+[0:0:1:0]    disk    sas:0x300605b01098e070          /dev/sdb   /dev/sg1 
+[0:0:2:0]    disk    sas:0x300605b01098e072          /dev/sdc   /dev/sg2 
+[0:0:3:0]    disk    sas:0x300605b01098e073          /dev/sdd   /dev/sg3 
+[0:0:4:0]    disk    sas:0x300605b01098e074          /dev/sde   /dev/sg4 
+[0:0:5:0]    disk    sas:0x300605b01098e075          /dev/sdf   /dev/sg5 
+[0:0:6:0]    disk    sas:0x300605b01098e076          /dev/sdg   /dev/sg6 
+[0:0:7:0]    disk    sas:0x300605b01098e077          /dev/sdh   /dev/sg7 
+[0:0:8:0]    enclosu sas:0x300705b01098e070          -          /dev/sg8 
+[0:0:9:0]    disk    sas:0x5000cca26102cff5          /dev/sdi   /dev/sg9 
+[0:0:10:0]   disk    sas:0x5000cca23b358155          /dev/sdj   /dev/sg10
+[0:0:11:0]   disk    sas:0x5000cca23b34297d          /dev/sdk   /dev/sg11
+[0:0:12:0]   disk    sas:0x5000cca23b353669          /dev/sdl   /dev/sg12
+[0:0:13:0]   disk    sas:0x5000cca261168391          /dev/sdm   /dev/sg13
+[0:0:14:0]   disk    sas:0x5000cca25469cce9          /dev/sdn   /dev/sg14
+[0:0:15:0]   disk    sas:0x5000cca2543a14a5          /dev/sdo   /dev/sg15
+[0:0:16:0]   disk    sas:0x5000cca2546bdb39          /dev/sdp   /dev/sg16
+[0:0:17:0]   disk    sas:0x5000cca2548ce425          /dev/sdq   /dev/sg17
+[0:0:18:0]   disk    sas:0x5000c500d96689c1          /dev/sdr   /dev/sg18
+[0:0:18:1]   disk    sas:0x5000c500d96689c1          /dev/sds   /dev/sg19
+[0:0:19:0]   disk    sas:0x5000c500d963a011          /dev/sdt   /dev/sg20
+[0:0:19:1]   disk    sas:0x5000c500d963a011          /dev/sdu   /dev/sg21
+[0:0:20:0]   disk    sas:0x5000c500d9666cfd          /dev/sdv   /dev/sg22
+[0:0:20:1]   disk    sas:0x5000c500d9666cfd          /dev/sdw   /dev/sg23
+[0:0:21:0]   disk    sas:0x5000c500d963b32d          /dev/sdx   /dev/sg24
+[0:0:21:1]   disk    sas:0x5000c500d963b32d          /dev/sdy   /dev/sg25
+[0:0:22:0]   disk    sas:0x5000c500d96752fd          /dev/sdz   /dev/sg26
+[0:0:22:1]   disk    sas:0x5000c500d96752fd          /dev/sdaa  /dev/sg27
+[0:0:23:0]   disk    sas:0x5000c500d966754d          /dev/sdab  /dev/sg28
+[0:0:23:1]   disk    sas:0x5000c500d966754d          /dev/sdac  /dev/sg29
+[0:0:24:0]   disk    sas:0x5000c500d9640959          /dev/sdad  /dev/sg30
+[0:0:24:1]   disk    sas:0x5000c500d9640959          /dev/sdae  /dev/sg31
+[0:0:25:0]   disk    sas:0x5000c500d964872d          /dev/sdaf  /dev/sg32
+[0:0:25:1]   disk    sas:0x5000c500d964872d          /dev/sdag  /dev/sg33
+[0:0:26:0]   enclosu sas:0x500a098008561d10          -          /dev/sg34
+[11:0:0:0]   disk    usb:3-7:1.0                     /dev/sdah  /dev/sg35
+[N:0:0:1]    disk    pcie 0x1987:0x5015                         /dev/nvme0n1  -        
+[N:1:0:1]    disk    pcie 0x1344:0x3000                         /dev/nvme1n1  -        
+[N:2:0:1]    disk    pcie 0x1344:0x3000                         /dev/nvme2n1  -        
+[N:3:1:1]    disk    pcie 0x1987:0x5012                         /dev/nvme3n1  -        
+[N:4:0:1]    disk    pcie 0x1344:0x3000                         /dev/nvme4n1  -        
+[N:5:1:1]    disk    pcie 0x1987:0x5012                         /dev/nvme5n1  -        
+[N:6:0:1]    disk    pcie 0x1987:0x5015                         /dev/nvme6n1  -        
+[N:7:0:1]    disk    pcie 0x1344:0x3000                         /dev/nvme7n1  -        
