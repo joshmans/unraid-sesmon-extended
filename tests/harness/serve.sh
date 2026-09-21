@@ -1,7 +1,8 @@
 #!/bin/sh
 # Serves the Configuration page on http://127.0.0.1:${PORT:-8088} against a fake copy of catan:
-# the real sysfs data, a stand-in sesmon and service script, and the shipped default config with its
-# example device switched on (the failure this plugin exists to fix). Needs only php-cli.
+# the real sysfs data, a stand-in sesmon and service script, and the example config with its
+# example device switched on (the failure this plugin exists to fix); CONFIG=fresh serves what a fresh install gets
+# instead. Needs only php-cli.
 # ?theme=black shows the dark theme.
 here="$(cd "$(dirname "$0")" && pwd)"
 root="${TMPDIR:-/tmp}/sesext-harness"
@@ -14,7 +15,13 @@ php -r '
   }'
 cp "$here/../../source/usr/local/emhttp/plugins/sesmon-ext/defaults/notify.sh" "$root/etc/sesmon-ext/notify.sh"; chmod 755 "$root/etc/sesmon-ext/notify.sh"
 printf '#!/bin/bash\necho mine\n' > "$root/etc/sesmon-ext/mine.sh"; chmod 755 "$root/etc/sesmon-ext/mine.sh"
-sed 's/enabled: false/enabled: true/;' "$here/../../source/usr/local/emhttp/plugins/sesmon-ext/defaults/config.yaml" | awk '/Device 2/{f=1} f&&/enabled: true/{sub(/true/,"false")} {print}' > "$root/etc/sesmon-ext/config.yaml"
+if [ "$CONFIG" = "fresh" ]; then
+  # what a fresh install gets: the config the installer ships
+  cp "$here/../../source/usr/local/emhttp/plugins/sesmon-ext/defaults/config.yaml" "$root/etc/sesmon-ext/config.yaml"
+else
+  # the full example config with its placeholder device switched on (the failure this plugin exists to fix)
+  sed 's/enabled: false/enabled: true/;' "$here/../fixtures/example-config.yaml" | awk '/Device 2/{f=1} f&&/enabled: true/{sub(/true/,"false")} {print}' > "$root/etc/sesmon-ext/config.yaml"
+fi
 cp "$root/etc/sesmon-ext/config.yaml" "$root/boot/config/plugins/sesmon-ext/config/config.yaml"
 # what the daemon would have written: the real snapshot from catan and a sample alert
 mkdir -p "$root/var/lib/sesmon-ext/netapp-ds424iom12a"

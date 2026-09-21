@@ -10,7 +10,7 @@ require SESEXT_INC . '/sesext_ops.php';
 $etc = "$root/etc/sesmon-ext"; $boot = "$root/boot/config/plugins/sesmon-ext/config";
 mkdir($etc, 0777, true);
 file_put_contents("$etc/notify.sh", "#!/bin/sh\necho hi\n"); chmod("$etc/notify.sh", 0755);
-$defaultText = file_get_contents(SESEXT_DEFAULTS . '/config.yaml');
+$defaultText = file_get_contents(SESEXT_EXAMPLE);
 file_put_contents("$etc/config.yaml", $defaultText);
 
 // ---- names
@@ -21,11 +21,11 @@ foreach (['../../etc/passwd', '/etc/passwd'] as $n) {
     ok(!sesext_save_file($n, 'x')['ok'], "save refused: $n");
 }
 
-// ---- state with the shipped default
+// ---- state with the example config
 $s = sesext_state();
 ok($s['form_ok'], 'state: form usable'); eq($s['error'], null, 'state: no load error');
 eq(count($s['devices']), 3, 'state: three configured devices');
-eq($s['problems'], [], 'state: the shipped default has no problems');
+eq($s['problems'], [], 'state: the example config has no problems');
 eq(array_column($s['available'], 'dev'), ['/dev/sg8', '/dev/sg34'], 'state: both enclosures offered');
 eq($s['shared_drive_addresses'], 8, 'state: shared drive addresses are counted, not treated as problems');
 eq($s['raw'], $defaultText, 'state: raw text');
@@ -60,7 +60,7 @@ ok($r['ok'], 'script: valid script saved'); ok(is_executable("$etc/mine.sh"), 's
 eq(file_get_contents("$etc/mine.sh"), "#!/bin/bash\necho ok\n", 'script: trailing newline added');
 eq(sesext_notifier_scripts(), ['/etc/sesmon-ext/mine.sh'], 'script: now offered as a notifier');
 
-// ---- form save from the shipped default
+// ---- form save from the example config
 file_put_contents("$etc/config.yaml", $defaultText); @unlink("$boot/config.yaml"); @unlink("$boot/config.yaml.bak");
 $form = ['devices' => [[
     'orig' => 0, 'address' => '0x500a098008561d10', 'description' => 'NetApp DS424', 'enabled' => true,

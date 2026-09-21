@@ -2,19 +2,19 @@
 require __DIR__ . '/lib.php';
 require SESEXT_INC . '/sesext_yaml.php';
 
-// --- the shipped default config parses into the expected structure
-$def = sesext_yaml_parse(file_get_contents(SESEXT_DEFAULTS . '/config.yaml'));
-eq($def['disable_timestamps'], true, 'default: disable_timestamps');
-eq(count($def['devices']), 3, 'default: three devices');
-eq($def['devices'][0]['address'], '0x500a098012345678', 'default: address kept as string');
-eq($def['devices'][0]['enabled'], false, 'default: example device is disabled');
-eq($def['devices'][0]['config']['poll_interval'], '1m30s', 'default: duration is a string');
-eq($def['devices'][0]['config']['poll_attempts'], 3, 'default: int');
-eq($def['devices'][0]['config']['poll_backoff_notify'], true, 'default: bool');
-eq($def['devices'][0]['script_notifier']['script'], '/etc/sesmon-ext/notify.sh', 'default: nested map');
-eq($def['devices'][0]['script_notifier']['config']['notify_attempts'], 3, 'default: map in map in list item');
-eq($def['devices'][1]['device'], '/dev/sg25', 'default: second device');
-eq($def['devices'][2]['type'], 1, 'default: json test device type');
+// --- the full example config (three devices, every setting) parses into the expected structure
+$def = sesext_yaml_parse(file_get_contents(SESEXT_EXAMPLE));
+eq($def['disable_timestamps'], true, 'example: disable_timestamps');
+eq(count($def['devices']), 3, 'example: three devices');
+eq($def['devices'][0]['address'], '0x500a098012345678', 'example: address kept as string');
+eq($def['devices'][0]['enabled'], false, 'example: example device is disabled');
+eq($def['devices'][0]['config']['poll_interval'], '1m30s', 'example: duration is a string');
+eq($def['devices'][0]['config']['poll_attempts'], 3, 'example: int');
+eq($def['devices'][0]['config']['poll_backoff_notify'], true, 'example: bool');
+eq($def['devices'][0]['script_notifier']['script'], '/etc/sesmon-ext/notify.sh', 'example: nested map');
+eq($def['devices'][0]['script_notifier']['config']['notify_attempts'], 3, 'example: map in map in list item');
+eq($def['devices'][1]['device'], '/dev/sg25', 'example: second device');
+eq($def['devices'][2]['type'], 1, 'example: json test device type');
 
 // --- scalars
 $s = sesext_yaml_parse("a: 'it''s'\nb: \"x \\\"q\\\" y\"\nc: plain text # comment\nd: \"has # hash\"\ne: 0x500a098012345678\nf: ~\ng:\nh: 1.5\ni: -3\n");
@@ -63,6 +63,6 @@ ok(strpos($out, "zzz:\n  k: \"v\"") !== false, 'writer: unknown nested map kept'
 
 // --- round trip: parse -> emit (no schema) -> parse gives the same tree
 $again = sesext_yaml_parse(implode("\n", sesext_yaml_emit($def, 0)) . "\n");
-eq($again, $def, 'default config survives parse -> emit -> parse');
+eq($again, $def, 'example config survives parse -> emit -> parse');
 
 sesext_test_done();

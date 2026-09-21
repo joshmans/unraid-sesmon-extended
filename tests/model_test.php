@@ -3,7 +3,7 @@ require __DIR__ . '/lib.php';
 require SESEXT_INC . '/sesext_model.php';
 
 $disc = sesext_discover(sesext_fixture_root(sesext_catan_lines()));
-$defaultText = file_get_contents(SESEXT_DEFAULTS . '/config.yaml');
+$defaultText = file_get_contents(SESEXT_EXAMPLE);
 $default = sesext_yaml_parse($defaultText);
 
 // ---- durations and presets
@@ -35,7 +35,7 @@ file_put_contents("$tmp/d.yaml", "devices:\n  - address: x\n    config: 5\n");
 eq(sesext_load("$tmp/d.yaml")['error'][0], 'unsupported', 'load: config must be a mapping');
 file_put_contents("$tmp/e.yaml", $defaultText);
 $l = sesext_load("$tmp/e.yaml");
-eq($l['error'], null, 'load: default config loads'); eq($l['raw'], $defaultText, 'load: raw text is returned untouched');
+eq($l['error'], null, 'load: example config loads'); eq($l['raw'], $defaultText, 'load: raw text is returned untouched');
 
 // ---- the failure from catan: enabled placeholder address
 $broken = $default; $broken['devices'][0]['enabled'] = true;
@@ -43,7 +43,7 @@ $p = sesext_problems($broken, $disc);
 eq(count($p), 1, 'problems: one');
 eq($p[0]['code'], 'unresolvable', 'problems: the placeholder address does not resolve');
 eq($p[0]['name'], 'JBOD', 'problems: named by description');
-eq(sesext_problems($default, $disc), [], 'problems: the shipped default (device disabled) is fine');
+eq(sesext_problems($default, $disc), [], 'problems: the example config (placeholder device disabled) is fine');
 
 // ---- view
 $v = sesext_view($broken, $disc, fn($p) => false);
@@ -121,7 +121,7 @@ ok(!isset($saved2['devices'][1]['config']), 'apply: settings of a test-file devi
 ok(!isset($saved2['devices'][1]['script_notifier']), 'apply: no notifier is added to a test-file device');
 
 // the whole shipped default survives render -> parse
-eq(sesext_yaml_parse(sesext_render($default)), $default, 'render: shipped default survives a save unchanged');
+eq(sesext_yaml_parse(sesext_render($default)), $default, 'render: example config survives a save unchanged');
 
 // ---- validation
 $bad = $good;

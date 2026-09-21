@@ -7,6 +7,7 @@ set_error_handler(function ($no, $str, $file, $line) { if (!(error_reporting() &
 define('SESEXT_INC', dirname(__DIR__) . '/source/usr/local/emhttp/plugins/sesmon-ext/include');
 define('SESEXT_DEFAULTS', dirname(__DIR__) . '/source/usr/local/emhttp/plugins/sesmon-ext/defaults');
 define('SESEXT_FIXTURES', __DIR__ . '/fixtures');
+define('SESEXT_EXAMPLE', SESEXT_FIXTURES . '/example-config.yaml'); // the daemon's full example: rich sample data for the parser and the form
 
 $GLOBALS['sesext_pass'] = 0;
 $GLOBALS['sesext_fail'] = 0;
