@@ -1,5 +1,14 @@
 # SCSI Enclosure Monitor Extended
 
+## 2026.09.21
+
+- **Bays are named by their drives.** The Enclosure Devices page has a Drive column: "Drive bay 10" is disk22 and disk23, with model, size and temperature, each disk linked to its Unraid page. An enclosure reports the SAS address of the drive in every bay; the plugin matches it against the drives the kernel sees and the disks Unraid knows. Temperatures come from Unraid's own state file, so no disk is woken up (a spun down disk reads "standby"), and they follow the °C / °F toggle.
+- **One drive, two disks.** A dual-actuator drive (for example Seagate ST14000NM0001) appears as two disks in one bay: the bay shows the physical drive once with each disk under it. When such a bay is reported as a Warning, the tooltip says that some shelves flag this, and that the enclosure does not say why.
+- **The HBA's virtual enclosure (Broadcom VirtualSES) is shown as what it is:** the HBA's ports, not a chassis. Ports are listed in port order as "Port 12" with the drive on them (or "No drive"), the unused slots are hidden, ports cabled to another enclosure say so ("cabled to NETAPP DS424IOM12A"), and the HBA's model and firmware version are shown, on the Enclosure Devices page and on the Enclosures page.
+- **Alerts name the drives.** The notification for a bay says which disks are in it ("Affected drives - drive bay 10: disk22 + disk23 (SEAGATE ST14000NM0001, one drive presenting 2 disks)"), also for a drive that has just dropped off the bus: the last mapping seen is kept in memory while the service runs and used, marked "last known". The Alert tables show the drive too. The shipped notify.sh does this; an installed notify.sh that you never edited is replaced by the new one on install, one you edited is left alone (add the lines yourself, see the shipped file).
+- Elements an enclosure reports no status for are hidden in the Friendly view (Raw still shows everything).
+- A quiet line on the Enclosure Devices page points to Disk Location Next for a physical tray map (it opens the plugin's page if it is installed, otherwise its repository). It can be dismissed.
+
 ## 2026.09.20
 
 First release of the fork of desertwitch's sesmon-unRAID (upstream version 2025.11.29).

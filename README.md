@@ -7,8 +7,9 @@ changes: a fan or power supply fails, a temperature climbs, a drive bay reports 
 the original plugin goes to desertwitch.
 
 What this fork adds: you choose the enclosures from the ones found on your server (no typing SAS addresses into
-YAML), settings are dropdowns and checkboxes that generate the configuration, and the Enclosure Devices page shows
-what each enclosure reports in plain words. The configuration files stay editable. Details are [below](#the-pages).
+YAML), settings are dropdowns and checkboxes that generate the configuration, the Enclosure Devices page shows what each
+enclosure reports in plain words, and bays are named by the drive in them ("Drive bay 10 is disk22 and disk23"), also in
+the alerts. The configuration files stay editable. Details are [below](#the-pages).
 
 ## Install
 
@@ -48,6 +49,12 @@ The page is built from the configuration files on disk, and saving writes them b
 - **Problems are shown where they are:** a configured address that no longer resolves is flagged next to that
   device (also on the Service Settings tab) with a one-click choice among the enclosures that were found. It also
   catches a SAS address written in capitals, which sesmon can never find because it compares in lower case.
+- **Alerts name the drives:** the shipped `notify.sh` puts a line in front of sesmon's message that names the disks in the
+  affected bays, for example `Affected drives - drive bay 10: disk22 + disk23 (SEAGATE ST14000NM0001, one drive presenting
+  2 disks)`. For a drive that has just dropped off the bus the last mapping seen is used, marked `[last known]`; it is kept in
+  memory (`/var/lib/sesmon-ext/.cache`) and refreshed every five minutes while the service runs. An installed `notify.sh`
+  that you never edited is replaced by the current one when the plugin is installed or upgraded; one you edited is left as
+  it is (the added lines are marked in the shipped file, so you can copy them).
 - **Test notification:** sends a clearly marked test message through a device's alert path, the way sesmon calls it
   (for the default, through Unraid's notification system, so email, push and other agents you set up there are
   included). It asks first, and only ever runs the built-in script or a script of the configuration folder.
@@ -67,10 +74,33 @@ What each enclosure reports, in two views (switch at the top, remembered per bro
 
 - **Friendly** (default): elements grouped by kind with names ("Drive bay 10", "Cooling fan 3"), status in plain
   words with a tooltip, one Reading column with units (temperatures in °C or °F, your choice), a Notes column that
-  only shows the flags that are set, and none of the per-type "overall" entries that enclosures usually do not
-  report. Alerts (changes sesmon detected) read the same way. A **Warning** is SES's "non-critical": the enclosure
+  only shows the flags that are set, and none of the elements an enclosure reports no status for (the per-type
+  "overall" entries, the unused slots of a virtual enclosure). Alerts (changes sesmon detected) read the same way. A **Warning** is SES's "non-critical": the enclosure
   says something needs attention but not what, and the tooltip says so.
 - **Raw:** the values exactly as sesmon reports them, in Celsius.
+
+**Which drive is in which bay.** In the Friendly view a Drive column names each bay by its drive: the Unraid disk
+(linked to its page), model, size and temperature. An enclosure reports the SAS address of the drive in every bay;
+the plugin matches that against the drives the kernel sees (`/sys/class/scsi_generic`) and the disks Unraid knows
+(`/var/local/emhttp/disks.ini`). Temperatures come from that state file, so no disk is woken up: a spun down disk reads
+"standby", and drives Unraid does not manage (for example an SSD on an HBA port) show no temperature.
+
+A dual-actuator drive (Seagate ST14000NM0001 and similar) shows up as two disks in one bay. The bay then shows the
+physical drive once, with each disk under it, and if the shelf reports that bay as a Warning the tooltip says that some
+shelves flag this and that the enclosure does not say why. (A shelf that flags such a drive permanently also means a
+real change in that bay is only visible as a change: sesmon alerts on changes.)
+
+**The HBA's virtual enclosure** (Broadcom "VirtualSES") is the HBA reporting its own ports, not a chassis. It has no
+fans, power supplies or temperatures. It is shown as "Port N" with the drive on it (or "No drive"), ports cabled to
+another enclosure say so, and the HBA's model and firmware version are shown. Monitoring it alerts you when a drive drops
+off an HBA port. To see it, tick it on the Enclosures page like any other enclosure.
+
+If a shelf does not report the address of the drive in each bay (SES "additional element status", which most SES-2
+shelves do), its bays are simply listed without a drive.
+
+**Physical layout.** SES carries no geometry (which bay is where on the front of the shelf), so this page lists bays but
+does not draw them. For a tray map use [Disk Location Next](https://github.com/joshmans/unraid-disklocation-next); the page
+links to it (to its own page if it is installed, and the note can be dismissed).
 
 ### Service Settings
 
@@ -95,6 +125,7 @@ components, and when it was last updated.
 | Plugin settings (Start Service, ...) | `/boot/config/plugins/sesmon-ext/sesmon-ext.cfg` |
 | What each enclosure reported (JSON) | `/var/lib/sesmon-ext/<enclosure>/` |
 | Log of the daemon | `/var/log/sesmon-ext.log` and the syslog (`sesmon:`) |
+| Which drive was in which bay (last known) | `/var/lib/sesmon-ext/.cache/bays.json` (memory, gone after a reboot) |
 | Service script | `/etc/rc.d/rc.sesmon-ext` (`start`, `stop`, `restart`, `status`) |
 
 ## Troubleshooting
@@ -106,6 +137,17 @@ components, and when it was last updated.
   address (dual-actuator drives, for example) trigger it; they are not enclosures and sesmon ignores them.
 - **An enclosure with a shared address.** sesmon cannot look such an address up, so the page monitors it by device
   path (`/dev/sgN`), which can change between boots.
+- **A bay shows no drive, or "last known".** The drive's SAS address is not (or no longer) among the devices the kernel
+  sees: the drive is missing, failed or dropped off the bus. While the bay still reports a device the plugin names the
+  drive it last saw there and marks it "last known" (kept in memory: after a reboot there is nothing to remember until the
+  service has been running for a few minutes).
+- **A drive shows no temperature.** Temperatures come from Unraid's state file, which has one only for disks Unraid manages
+  and only while they are spun up: a spun down disk reads "standby" (reading it would wake it), and a drive that is not in the
+  array or a pool (an SSD on an HBA port, for example) has none.
+- **Many "No drive" ports on the HBA's enclosure.** Normal: it lists all of the HBA's ports, and only the ones with a drive
+  on them show one. Ports cabled to another enclosure say so.
+- **The Warning bays.** A shelf that reports a bay as a Warning without saying why gives nothing more to show. When the bay
+  holds a drive that presents two disks, the tooltip says that some shelves flag this.
 - **No notification arrives.** Use Send test notification. If the test reports success and nothing arrives, the fault
   is in Unraid's notification setup (Settings, Notification Settings), not in the plugin.
 
@@ -119,6 +161,9 @@ enclosures again on the Enclosures page instead. (Your old file stays in `/boot/
 
 - Everything on the system is named `sesmon-ext` (plugin folder, service, config and log paths), so it never clashes
   with the original.
+- **Not in the original:** the Enclosures page (choose enclosures and settings instead of writing YAML), Send test
+  notification, Restore previous version, the Friendly view with its Fahrenheit option, bays named by their drives, the
+  virtual enclosure of an HBA shown as ports with the HBA's firmware, and alerts that name the disks in the affected bays.
 - The default configuration has no example devices. The original ships three, one of them enabled with a made-up SAS
   address, so a fresh install with the service switched on fails with
   `SAS address [0x500a098012345678] is not resolvable (not found)`.
@@ -135,15 +180,18 @@ tests/run.sh
 runs the PHP tests (only `php-cli` is needed) and, if `node` is installed, the JavaScript ones. They cover the YAML
 reader and writer, enclosure discovery against real sysfs data captured from a server with a NetApp JBOD (plus
 dual-path and address-less enclosures), the configuration model, the save, restore and notification logic (with a
-stand-in `sesmon`), the shape of a fresh install, and the Friendly view's translation of SES elements against a real
-snapshot.
+stand-in `sesmon`), the shape of a fresh install, which drive is in which bay (the SES data of a NetApp shelf and of an
+HBA's virtual enclosure matched against real sysfs and Unraid state), the whole alert path through `notify.sh` with a
+stub for Unraid's notify command, the installer's rule for replacing `notify.sh`, and the Friendly view's translation
+of SES elements. The fixtures in `tests/fixtures/catan` are captures from a real server with serial numbers removed;
+`tests/fixtures/make-bays-fixture.php` regenerates `bays.json` after a change to the bay logic.
 
 `tests/harness/serve.sh` serves the real Enclosures and Enclosure Devices pages against that data on
 http://127.0.0.1:8088 for looking at them in a browser (`CONFIG=fresh` shows what a fresh install gets, `/devices`
 the Enclosure Devices page, `?theme=black` the dark theme).
 
 ```
-./build.sh 2026.09.20
+./build.sh 2026.09.21
 ```
 
 builds `dist/sesmon-ext-<version>.txz` and stamps `sesmon-ext.plg` with the version, the SHA-256 of that package and
