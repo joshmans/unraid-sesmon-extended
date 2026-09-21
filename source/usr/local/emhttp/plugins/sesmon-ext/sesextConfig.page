@@ -1,0 +1,406 @@
+Menu="sesext:3"
+Title="Enclosures"
+Tag="sliders"
+Markdown="false"
+---
+<?
+/* Part of sesmon-ext (fork of sesmon-unRAID by desertwitch, whose page this replaces).
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License 2
+ * as published by the Free Software Foundation.
+ *
+ * Choose the enclosures to monitor and how; the sesmon configuration is generated from the choices.
+ * The configuration files themselves stay editable under "Advanced". The page keeps no state of its
+ * own: it is always built from the files on disk (see include/sesext_ops.php).
+ */
+?>
+
+<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/sesmon-ext/css/codemirror.min.css');?>">
+<link type="text/css" rel="stylesheet" href="<?=autov('/plugins/sesmon-ext/css/dracula.min.css');?>">
+
+<style>
+    #sx-app .sx-box { border: 1px solid; padding: 8px 12px; margin: 0 0 12px 0; }
+    #sx-app .sx-box.err { border-color: #e22; color: #e22; }
+    #sx-app .sx-box.warn { border-color: #d80; color: #d80; }
+    #sx-app .sx-box.good { border-color: #3a3; color: #3a3; }
+    #sx-app .sx-box ul { margin: 4px 0 0 20px; padding: 0; }
+    #sx-app .sx-box pre { margin: 4px 0 0 0; white-space: pre-wrap; }
+    #sx-app table.sx-table { width: 100%; border-collapse: collapse; }
+    #sx-app table.sx-table > thead > tr > th { text-align: left; padding: 6px 8px; font-weight: bold; }
+    #sx-app table.sx-table > tbody > tr.sx-row > td { padding: 8px; vertical-align: top; border-top: 1px solid rgba(128,128,128,.35); }
+    #sx-app tr.sx-detail > td { padding: 4px 8px 12px 40px; }
+    #sx-app tr.sx-alt > td { background: rgba(128,128,128,.13); }
+    #sx-app .sx-sub { font-size: 1.1rem; opacity: .75; margin-top: 3px; word-break: break-all; }
+    #sx-app .sx-desc { width: 95%; min-width: 12rem; }
+    #sx-app .sx-badge { font-weight: bold; }
+    #sx-app .sx-badge.ok { color: #3a3; } #sx-app .sx-badge.warn { color: #d80; }
+    #sx-app .sx-badge.error { color: #e22; } #sx-app .sx-badge.off { opacity: .6; }
+    #sx-app .sx-msg { display: block; font-weight: normal; margin-top: 2px; }
+    #sx-app .sx-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(36rem, 1fr)); gap: 8px 24px; max-width: 80rem; } /* at most two columns, however wide the screen */
+    #sx-app .sx-fields > div { white-space: nowrap; }
+    #sx-app .sx-fields > div > label { display: inline-block; min-width: 20rem; }
+    #sx-app .sx-fields select { min-width: 15rem; }
+    #sx-app .sx-fields h4 { grid-column: 1 / -1; margin: 8px 0 0 0; }
+    #sx-app .sx-custom { width: 9rem; }
+    #sx-app .sx-link { cursor: pointer; margin-right: 12px; white-space: nowrap; }
+    #sx-app .sx-dot { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; margin-right: 6px; }
+    #sx-app .sx-dot.on { background: #3a3; } #sx-app .sx-dot.off { background: #e22; }
+    #sx-app details { margin-top: 24px; }
+    #sx-app details > summary { cursor: pointer; font-size: 1.2rem; font-weight: bold; }
+    #sx-app .CodeMirror { border: 1px solid #888; margin: 10px 0; height: 520px; }
+    #sx-app .sx-actions { margin: 14px 0; }
+    #sx-app .sx-hint { opacity: .75; }
+</style>
+
+<div id="sx-app">
+    <div id="sx-notices"></div>
+
+    <div style="margin-bottom:14px;">
+        <span id="sx-daemon"></span>
+        <input type="button" id="sx-start" value="Start" class="sx-svc" data-do="start">
+        <input type="button" id="sx-restart" value="Restart" class="sx-svc" data-do="restart">
+        <input type="button" id="sx-stop" value="Stop" class="sx-svc" data-do="stop">
+        <span class="sx-hint" style="margin-left:10px;">Whether the service starts with the array is set under Service Settings.</span>
+    </div>
+
+    <div id="sx-form">
+        <table class="sx-table">
+            <thead>
+                <tr><th style="width:5rem;">Monitor</th><th>Enclosure</th><th style="width:26%;">Status</th><th style="width:22%;">Alerts</th><th style="width:11rem;"></th></tr>
+            </thead>
+            <tbody id="sx-rows"></tbody>
+        </table>
+        <div id="sx-empty" class="sx-hint" style="display:none;margin:12px 8px;">No SES-capable enclosure was found on this server. Check the cabling and power, or see the lsscsi output under Advanced.</div>
+        <div id="sx-shared" class="sx-hint" style="margin:10px 8px;"></div>
+
+        <div class="sx-actions">
+            <input type="button" id="sx-save" value="Save">
+            <input type="button" id="sx-saverestart" value="Save and restart service">
+            <input type="button" id="sx-discard" value="Discard changes">
+        </div>
+    </div>
+
+    <details id="sx-adv">
+        <summary>Advanced: edit the configuration files directly</summary>
+        <p class="sx-hint">These are the files the service reads. Saving here writes exactly what you typed (after sesmon has checked it) and the selections above are reloaded from it; saving the selections above rewrites <code>config.yaml</code> from them, keeping any setting they do not cover. The last save wins. Comments you add by hand are lost when the selections above are saved; the previous file is kept as <code>config.yaml.bak</code> on the flash drive.</p>
+        <div id="sx-lsscsi-wrap" style="display:none;">
+            <strong>SCSI enclosures found by <code>lsscsi -tg</code>:</strong>
+            <pre id="sx-lsscsi"></pre>
+        </div>
+        <div>
+            <select id="sx-file"></select>
+            <input type="button" id="sx-newfile" value="New script...">
+        </div>
+        <div id="sx-rawmsg"></div>
+        <textarea id="sx-editor"></textarea>
+        <input type="button" id="sx-saveraw" value="Save file">
+    </details>
+</div>
+
+<script src="<?=autov('/plugins/sesmon-ext/js/codemirror.min.js');?>"></script>
+<script src="<?=autov('/plugins/sesmon-ext/js/yaml.min.js');?>"></script>
+
+<script>
+try {
+(function () {
+    var API = '/plugins/sesmon-ext/include/sesext_api.php';
+    var THEME = <?=json_encode(($display["theme"] ?? 'white') == 'white' || ($display["theme"] ?? 'white') == 'azure' ? 'default' : 'dracula');?>;
+
+    var MON = [
+        ['poll_interval', 'How often to check'], ['poll_attempts', 'Attempts per check'],
+        ['poll_attempt_timeout', 'Time allowed per attempt'], ['poll_attempt_interval', 'Wait between attempts'],
+        ['poll_backoff_after', 'Failed checks before backing off'], ['poll_backoff_time', 'Back-off pause']
+    ];
+    var MONBOOL = [
+        ['poll_backoff_notify', 'Notify when backing off'], ['poll_backoff_stopmonitor', 'Stop monitoring when backing off'],
+        ['verbose', 'Verbose logging']
+    ];
+    var NOTI = [
+        ['notify_attempts', 'Attempts per notification'], ['notify_attempt_timeout', 'Time allowed per attempt'],
+        ['notify_attempt_interval', 'Wait between attempts']
+    ];
+
+    var S = null;          // the state from the server
+    var rows = [];         // the selections (what the form edits)
+    var dirty = false;
+    var editor = null, editorFile = 'config.yaml';
+
+    function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+    function encl(dev) { for (var i = 0; i < S.enclosures.length; i++) { if (S.enclosures[i].dev === dev) { return S.enclosures[i]; } } return null; }
+    function setDirty(v) { dirty = v; $('#sx-save,#sx-saverestart,#sx-discard').prop('disabled', !v); }
+
+    /* ---------------------------------------------------------- notices */
+    function notice(kind, html) { $('#sx-notices').append('<div class="sx-box ' + kind + '">' + html + '</div>'); }
+    function list(items) { return '<ul>' + items.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul>'; }
+    function clearNotices() { $('#sx-notices').empty(); }
+    function showResult(res, what) {
+        clearNotices();
+        if (!res.ok) { notice('err', '<strong>' + esc(what) + ' was not saved.</strong>' + list(res.errors || ['Unknown error'])); return; }
+        var kind = 'good', body = '<strong>' + esc(what) + ' saved.</strong>';
+        if ((res.warnings || []).length) { kind = 'warn'; body += list(res.warnings); }
+        if (res.test && res.test.checked && !res.test.ok) {
+            kind = 'warn';
+            body += '<div>sesmon could not start monitoring with the saved configuration:</div><pre>' + esc(res.test.output) + '</pre>';
+        }
+        notice(kind, body);
+    }
+    function showProblems() {
+        if (!S.problems || !S.problems.length) { return; }
+        notice('err', '<strong>The service will not start with the saved configuration:</strong>' + list(S.problems.map(function (p) { return p.name + ': ' + p.message; })) +
+            '<div>Pick the right enclosure in the row below, or switch the device off, then save.</div>');
+    }
+
+    /* ------------------------------------------------------------ model */
+    function build() {
+        rows = [];
+        S.devices.forEach(function (d) {
+            var pre = {};
+            Object.keys(d.fields).forEach(function (k) { pre[k] = d.fields[k].preset; });
+            rows.push({orig: d.orig, kind: d.kind, address: d.address, device: d.device, description: d.description,
+                enabled: d.enabled, config: $.extend({}, d.config), notifier: {mode: d.notifier.mode, script: d.notifier.script, config: $.extend({}, d.notifier.config)},
+                pre: pre, status: d.status, removed: false, open: false});
+        });
+        S.available.forEach(function (e) {
+            var pre = {};
+            Object.keys(S.presets).forEach(function (k) { pre[k] = 'x'; });
+            var all = $.extend({}, S.defaults.config, S.defaults.notifier);
+            Object.keys(all).forEach(function (k) { pre[k] = presetFor(k, all[k]); });
+            rows.push({orig: null, kind: 'device', address: e.use[0] === 'address' ? e.use[1] : '', device: e.use[0] === 'device' ? e.use[1] : '',
+                description: e.label, enabled: false, config: $.extend({}, S.defaults.config), notifier: {mode: 'unraid', script: S.notify_script, config: $.extend({}, S.defaults.notifier)},
+                pre: pre, status: {level: 'off', code: 'available', message: 'Not monitored', resolved: e.dev}, removed: false, open: false, fresh: e});
+        });
+    }
+    // the dropdown choice for a default value: presets carry their default as the first "(default)" label
+    function presetFor(key, value) {
+        var p = S.presets[key] || [];
+        for (var i = 0; i < p.length; i++) { if (String(p[i].value) === String(value)) { return p[i].value; } }
+        return 'custom';
+    }
+    // an available enclosure disappears once another row has claimed it (e.g. through "Use a discovered enclosure")
+    function superseded(r) {
+        return r.orig === null && rows.some(function (o) { return o !== r && !o.removed && o.status.resolved === r.fresh.dev; });
+    }
+    function collect() {
+        var devices = [];
+        rows.forEach(function (r) {
+            if (r.removed || superseded(r) || (r.orig === null && !r.enabled)) { return; }
+            devices.push({orig: r.orig, address: r.address, device: r.device, description: r.description, enabled: r.enabled,
+                config: r.config, notifier: {mode: r.notifier.mode, script: r.notifier.script, config: r.notifier.config}});
+        });
+        return {devices: devices};
+    }
+
+    /* ----------------------------------------------------------- render */
+    function fieldControl(i, group, key, label) {
+        var r = rows[i], store = group === 'n' ? r.notifier.config : r.config;
+        var opts = (S.presets[key] || []).map(function (p) { return '<option value="' + esc(p.value) + '"' + (String(r.pre[key]) === String(p.value) ? ' selected' : '') + '>' + esc(p.label) + '</option>'; }).join('');
+        var isCustom = r.pre[key] === 'custom';
+        return '<div><label>' + esc(label) + '</label><select class="sx-preset" data-i="' + i + '" data-g="' + group + '" data-k="' + key + '">' + opts +
+            '<option value="custom"' + (isCustom ? ' selected' : '') + '>Custom...</option></select> ' +
+            '<input type="text" class="sx-custom" data-i="' + i + '" data-g="' + group + '" data-k="' + key + '" value="' + esc(store[key]) + '"' + (isCustom ? '' : ' style="display:none"') + '></div>';
+    }
+    function boolControl(i, key, label) {
+        return '<div><label><input type="checkbox" class="sx-bool" data-i="' + i + '" data-k="' + key + '"' + (rows[i].config[key] ? ' checked' : '') + '> ' + esc(label) + '</label></div>';
+    }
+    function notifierCell(i) {
+        var r = rows[i];
+        if (r.kind === 'file') { return '<span class="sx-hint">-</span>'; }
+        var h = '<select class="sx-notimode" data-i="' + i + '">' +
+            '<option value="unraid"' + (r.notifier.mode === 'unraid' ? ' selected' : '') + '>Unraid notifications</option>' +
+            '<option value="log"' + (r.notifier.mode === 'log' ? ' selected' : '') + '>Log only (no notification)</option>' +
+            '<option value="custom"' + (r.notifier.mode === 'custom' ? ' selected' : '') + '>Custom script</option></select>';
+        if (r.notifier.mode === 'custom') {
+            var scripts = S.scripts.slice();
+            if (r.notifier.script && scripts.indexOf(r.notifier.script) < 0) { scripts.push(r.notifier.script); }
+            h += '<br><select class="sx-notiscript" data-i="' + i + '"><option value="">Choose a script...</option>' + scripts.map(function (s) {
+                return '<option value="' + esc(s) + '"' + (s === r.notifier.script ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>';
+            if (!S.scripts.length) { h += '<div class="sx-hint">Create a script under Advanced (New script...).</div>'; }
+        }
+        return h;
+    }
+    function statusCell(i) {
+        var r = rows[i], st = r.status, h = '';
+        if (st.code === 'available' || st.code === 'disabled') { return '<span class="sx-badge off">Not monitored</span>'; }
+        var label = {ok: 'OK', warn: 'Check', error: 'Problem', off: 'Not saved yet'}[st.level] || st.level;
+        h += '<span class="sx-badge ' + esc(st.level) + '">' + esc(label) + '<span class="sx-msg">' + esc(st.message) + '</span></span>';
+        if (r.kind !== 'file' && (st.level === 'error' || st.level === 'warn') && S.enclosures.length) {
+            h += '<select class="sx-replace" data-i="' + i + '" style="margin-top:4px;"><option value="">Use a discovered enclosure...</option>' + S.enclosures.map(function (e, n) {
+                return '<option value="' + n + '">' + esc(e.label + ' (' + e.dev + (e.address ? ', ' + e.address : '') + ')') + '</option>'; }).join('') + '</select>';
+        }
+        return h;
+    }
+    function subLine(r) {
+        var e = r.fresh || encl(r.status.resolved);
+        var parts = [];
+        if (e) { parts.push(e.label); }
+        if (r.status.resolved && r.kind !== 'file') { parts.push(r.status.resolved); }
+        if (r.address) { parts.push(r.address); } else if (r.device && r.kind === 'file') { parts.push(r.device); } else if (r.device && !(e && parts.indexOf(r.device) >= 0)) { parts.push(r.device); }
+        if (r.kind === 'file') { parts.unshift('JSON test file'); }
+        return parts.join(' · ');
+    }
+    function detailRow(i) {
+        var r = rows[i];
+        if (r.kind === 'file') { return ''; }
+        var h = '<div class="sx-fields"><h4>Monitoring</h4>';
+        MON.forEach(function (f) { h += fieldControl(i, 'c', f[0], f[1]); });
+        MONBOOL.forEach(function (f) { h += boolControl(i, f[0], f[1]); });
+        if (r.notifier.mode !== 'log') {
+            h += '<h4>Notifications</h4>';
+            NOTI.forEach(function (f) { h += fieldControl(i, 'n', f[0], f[1]); });
+        }
+        return h + '</div>';
+    }
+    function render() {
+        var h = '', shown = 0;
+        rows.forEach(function (r, i) {
+            if (r.removed) { return; }
+            if (superseded(r)) { return; }
+            shown++;
+            var alt = shown % 2 === 0 ? ' sx-alt' : ''; // stripe per device: an opened settings panel shares its row's shade
+            h += '<tr class="sx-row' + alt + '" data-i="' + i + '"><td><input type="checkbox" class="sx-enabled" data-i="' + i + '"' + (r.enabled ? ' checked' : '') + '></td>' +
+                '<td><input type="text" class="sx-desc" data-i="' + i + '" value="' + esc(r.description) + '" placeholder="Description"><div class="sx-sub">' + esc(subLine(r)) + '</div></td>' +
+                '<td>' + statusCell(i) + '</td><td>' + notifierCell(i) + '</td>' +
+                '<td>' + (r.kind === 'file' ? '' : '<a class="sx-link sx-more" data-i="' + i + '">' + (r.open ? 'Hide settings' : 'Settings') + '</a>') +
+                (r.orig !== null ? '<a class="sx-link sx-del" data-i="' + i + '">Remove</a>' : '') + '</td></tr>';
+            if (r.open) { h += '<tr class="sx-detail' + alt + '"><td></td><td colspan="4">' + detailRow(i) + '</td></tr>'; }
+        });
+        $('#sx-rows').html(h);
+        $('#sx-empty').toggle(shown === 0);
+        $('#sx-shared').text(S.shared_drive_addresses ? S.shared_drive_addresses + ' drive addresses are shared by more than one device node (typical for dual-actuator drives). That is harmless: they are not enclosures and are not listed here.' : '');
+    }
+
+    /* ----------------------------------------------------------- events */
+    function on(ev, sel, fn) { $('#sx-app').on(ev, sel, fn); }
+    on('change', '.sx-enabled', function () { rows[+$(this).data('i')].enabled = this.checked; setDirty(true); render(); });
+    on('input', '.sx-desc', function () { rows[+$(this).data('i')].description = this.value; setDirty(true); });
+    on('change', '.sx-notimode', function () {
+        var r = rows[+$(this).data('i')]; r.notifier.mode = this.value;
+        if (this.value === 'unraid') { r.notifier.script = S.notify_script; }
+        if (this.value === 'custom' && r.notifier.script === S.notify_script) { r.notifier.script = ''; }
+        setDirty(true); render();
+    });
+    on('change', '.sx-notiscript', function () { rows[+$(this).data('i')].notifier.script = this.value; setDirty(true); });
+    on('click', '.sx-more', function () { var r = rows[+$(this).data('i')]; r.open = !r.open; render(); });
+    on('click', '.sx-del', function () {
+        var r = rows[+$(this).data('i')];
+        swal({title: 'Remove this device?', text: 'It is removed from the configuration when you save.', type: 'warning', showCancelButton: true}, function () { r.removed = true; setDirty(true); render(); });
+    });
+    on('change', '.sx-replace', function () {
+        if (this.value === '') { return; }
+        var r = rows[+$(this).data('i')], e = S.enclosures[+this.value];
+        r.address = e.use[0] === 'address' ? e.use[1] : ''; r.device = e.use[0] === 'device' ? e.use[1] : '';
+        r.fresh = e; r.status = {level: 'off', code: 'changed', message: 'Will use ' + e.dev + ' when saved', resolved: e.dev};
+        if (!r.description || /^(JBOD\d*)$/.test(r.description)) { r.description = e.label; }
+        r.enabled = true; setDirty(true); render();
+    });
+    on('change', '.sx-preset', function () {
+        var $t = $(this), r = rows[+$t.data('i')], k = $t.data('k'), g = $t.data('g'), store = g === 'n' ? r.notifier.config : r.config;
+        r.pre[k] = this.value;
+        if (this.value !== 'custom') { store[k] = S.field_types[k] === 'int' ? parseInt(this.value, 10) : this.value; }
+        setDirty(true); render();
+    });
+    on('input', '.sx-custom', function () {
+        var $t = $(this), r = rows[+$t.data('i')], k = $t.data('k'), store = $t.data('g') === 'n' ? r.notifier.config : r.config;
+        store[k] = (S.field_types[k] === 'int' && /^-?\d+$/.test(this.value)) ? parseInt(this.value, 10) : this.value; setDirty(true);
+    });
+    on('change', '.sx-bool', function () { var $t = $(this); rows[+$t.data('i')].config[$t.data('k')] = this.checked; setDirty(true); });
+
+    /* --------------------------------------------------------- server */
+    function post(data) { return $.post(API, data, null, 'json'); }
+    function failed(x) { clearNotices(); notice('err', 'The server did not answer as expected (' + esc(x.status + ' ' + x.statusText) + ').'); }
+
+    function load(keepNotices) {
+        return $.getJSON(API, {action: 'state'}).done(function (st) {
+            S = st;
+            if (!keepNotices) { clearNotices(); }
+            build(); render(); setDirty(false); daemon(st.daemon.running);
+            if (!st.form_ok) {
+                notice('warn', '<strong>The selections are switched off:</strong> ' + esc(st.error ? st.error[1] : '') + '<div>The file is not one the selections can represent, so edit it directly under Advanced.</div>');
+                $('#sx-form').hide(); $('#sx-adv').prop('open', true); openAdvanced();
+            } else {
+                $('#sx-form').show(); if (!keepNotices) { showProblems(); }
+            }
+            $('#sx-lsscsi-wrap').toggle(!!st.lsscsi); $('#sx-lsscsi').text(st.lsscsi);
+            fillFiles();
+            if (editor && editorFile === 'config.yaml') { editor.setValue(st.raw); }
+        }).fail(failed);
+    }
+    function daemon(running) {
+        $('#sx-daemon').html('<span class="sx-dot ' + (running ? 'on' : 'off') + '"></span><strong>' + (running ? 'Service is running' : 'Service is not running') + '</strong>');
+        $('#sx-start').prop('disabled', running); $('#sx-stop').prop('disabled', !running); $('#sx-restart').prop('disabled', !running);
+    }
+    function service(action) {
+        $('.sx-svc').prop('disabled', true);
+        return post({action: 'service', do: action}).done(function (res) {
+            daemon(res.running);
+            if (!res.ok) { clearNotices(); notice('err', '<strong>Could not ' + esc(action) + ' the service:</strong><pre>' + esc(res.output) + '</pre><div>See the syslog for the reason.</div>'); }
+            else if (action !== 'stop' && !res.running) { clearNotices(); notice('err', '<strong>The service exited right after starting.</strong> Check the syslog: with no enabled device, or an enclosure it cannot find, it stops at once.'); }
+        }).fail(failed);
+    }
+
+    $('#sx-save').on('click', function () { save(false); });
+    $('#sx-saverestart').on('click', function () { save(true); });
+    $('#sx-discard').on('click', function () { load(); });
+    $('.sx-svc').on('click', function () { service($(this).data('do')); });
+
+    function save(restart) {
+        $('#sx-save,#sx-saverestart').prop('disabled', true);
+        post({action: 'save_form', form: JSON.stringify(collect())}).done(function (res) {
+            showResult(res, 'The configuration');
+            if (!res.ok) { $('#sx-save,#sx-saverestart').prop('disabled', false); return; }
+            load(true).done(function () {
+                if (restart) { service('restart').done(function () { load(true); }); }
+                else if (S.daemon.running) { notice('warn', 'The running service still uses the old configuration until it is restarted. <input type="button" value="Restart now" id="sx-now">'); }
+            });
+        }).fail(function (x) { failed(x); $('#sx-save,#sx-saverestart').prop('disabled', false); });
+    }
+    $('#sx-app').on('click', '#sx-now', function () { service('restart').done(function () { load(true); }); });
+
+    /* --------------------------------------------------------- advanced */
+    function fillFiles() {
+        var h = S.files.map(function (f) { return '<option' + (f === editorFile ? ' selected' : '') + '>' + esc(f) + '</option>'; }).join('');
+        if (S.files.indexOf(editorFile) < 0) { h += '<option selected>' + esc(editorFile) + '</option>'; }
+        $('#sx-file').html(h);
+    }
+    function openAdvanced() {
+        if (editor) { editor.refresh(); return; }
+        editor = CodeMirror.fromTextArea($('#sx-editor')[0], {theme: THEME, mode: 'yaml', lineNumbers: true});
+        editor.setValue(S.raw);
+    }
+    $('#sx-adv').on('toggle', function () { if (this.open && S) { openAdvanced(); } });
+    $('#sx-file').on('change', function () {
+        editorFile = this.value; $('#sx-rawmsg').empty();
+        $.getJSON(API, {action: 'read', name: editorFile}).done(function (res) {
+            if (res.ok) { editor.setOption('mode', /\.yaml$/.test(editorFile) ? 'yaml' : null); editor.setValue(res.text); }
+            else { $('#sx-rawmsg').html('<div class="sx-box err">' + esc(res.errors.join(' ')) + '</div>'); }
+        });
+    });
+    $('#sx-newfile').on('click', function () {
+        var name = window.prompt('Name of the new script (letters, digits, . _ - ; must end in .sh):', 'my-notify.sh');
+        if (!name) { return; }
+        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.sh$/.test(name)) { $('#sx-rawmsg').html('<div class="sx-box err">Not a valid script name.</div>'); return; }
+        editorFile = name; fillFiles(); editor.setOption('mode', null);
+        editor.setValue('#!/bin/bash\n# Called by sesmon with: $1 device path, $2 SAS address, $3 description, $4 message, $5 change report (JSON)\n');
+    });
+    function saveRaw() {
+        post({action: 'save_raw', name: editorFile, text: editor.getValue()}).done(function (res) {
+            $('#sx-rawmsg').empty();
+            if (!res.ok) { $('#sx-rawmsg').html('<div class="sx-box err"><strong>' + esc(editorFile) + ' was not saved.</strong>' + list(res.errors || []) + '</div>'); return; }
+            showResult(res, editorFile);
+            load(true);
+        }).fail(failed);
+    }
+    $('#sx-saveraw').on('click', function () {
+        if (dirty && editorFile === 'config.yaml') {
+            swal({title: 'Discard your selections?', text: 'You changed selections above that are not saved. Saving this file replaces them with what the file says.', type: 'warning', showCancelButton: true}, saveRaw);
+        } else { saveRaw(); }
+    });
+
+    setInterval(function () { $.getJSON(API, {action: 'status'}).done(function (r) { if (!$('.sx-svc:focus').length) { daemon(r.running); } }); }, 10000);
+    load();
+})();
+} catch (error) {
+    console.error('sesmon-ext configuration page error:', error);
+}
+</script>

@@ -29,11 +29,38 @@ if (file_exists('/usr/local/emhttp/plugins/sesmon-ext/start-failed')) {
     if (!$sesext_running) { $lastStartFailed = true; }
     unlink('/usr/local/emhttp/plugins/sesmon-ext/start-failed');
 }
+
+// say what is wrong with the saved configuration here, not only in the syslog
+require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_model.php';
+$sesext_problems = []; $sesext_enabled = null;
+$sesext_loaded = sesext_load('/etc/sesmon-ext/config.yaml');
+if ($sesext_loaded['config'] !== null) {
+    $sesext_problems = sesext_problems($sesext_loaded['config'], sesext_discover());
+    $sesext_enabled = count(array_filter($sesext_loaded['config']['devices'] ?? [], fn($d) => !empty($d['enabled'])));
+} elseif ($sesext_loaded['error'][0] !== 'missing') {
+    $sesext_problems[] = ['name' => 'Configuration file', 'message' => $sesext_loaded['error'][1]];
+}
 ?>
 
 <?if ($lastStartFailed):?>
 <div class="red-text" style="border: 1px solid red;padding: 5px;">
     sesmon was not able to start successfully - please check the <a href="/Tools/Syslog" target="_blank">SYSLOG</a> for more information.
+</div><br>
+<?endif;?>
+
+<?if ($sesext_problems):?>
+<div class="red-text" style="border: 1px solid red;padding: 5px;">
+    The saved configuration cannot be started:
+    <ul style="margin:4px 0 4px 20px;">
+    <?foreach ($sesext_problems as $p):?>
+        <li><?=htmlspecialchars($p['name'] . ': ' . $p['message'])?></li>
+    <?endforeach;?>
+    </ul>
+    Fix it on the <a href="/Settings/sesext">Enclosures</a> tab, where you can pick one of the enclosures found on this server.
+</div><br>
+<?elseif ($sesext_enabled === 0):?>
+<div style="border: 1px solid orange;padding: 5px;">
+    No enclosure is selected for monitoring yet, so the service would stop right after starting. Choose one on the <a href="/Settings/sesext">Enclosures</a> tab.
 </div><br>
 <?endif;?>
 
