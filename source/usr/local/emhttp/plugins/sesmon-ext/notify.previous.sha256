@@ -1,0 +1,3 @@
+# sha256 of the notify.sh that earlier versions shipped: an installed copy that still matches one of them is unedited and
+# is replaced by the current one on install (see install/doinst.sh)
+9a6f38e1e4c53edec5c296ec5e40f42d479d8fc4d859cf17e658384e2ecc3976  2026.09.20

@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# Keeps the last-known bay map fresh while the service runs (started by rc.sesmon-ext, see include/sesext_bays.php):
+# the page refreshes it too, but nobody has to have the page open when a drive fails.
+#
+# Copyright desertwitch (parts of the original plugin); this file is part of sesmon-ext, GPL 2.
+#
+REFRESH="/usr/bin/php -q /usr/local/emhttp/plugins/sesmon-ext/scripts/bay_cache.php"
+
+sleep 45   # sesmon writes its first snapshot within seconds of starting, and a poll is 90 s by default
+while pgrep -x sesmon >/dev/null 2>&1; do
+    $REFRESH >/dev/null 2>&1
+    sleep 300
+done

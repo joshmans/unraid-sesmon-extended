@@ -42,6 +42,15 @@ mkdir -p /etc/sesmon-ext
 mkdir -p /var/lib/sesmon-ext
 
 ln -sfn /var/lib/sesmon-ext $DOCROOT/json   # -n: do not follow an existing link into the folder
+# The shipped notify.sh names the drives of the affected bays in alerts. Replace the copy in the configuration folder
+# if it is still exactly an earlier shipped version (a copy the user edited is theirs and stays as it is; a missing
+# one is added by the cp -n below).
+if [ -f $BOOT/config/notify.sh ] && [ -f $DOCROOT/notify.previous.sha256 ]; then
+    cur=$(sha256sum $BOOT/config/notify.sh | cut -d' ' -f1)
+    if grep -q "^$cur" $DOCROOT/notify.previous.sha256; then
+        cp -f $DOCROOT/defaults/notify.sh $BOOT/config/notify.sh
+    fi
+fi
 cp -nr $DOCROOT/defaults/* $BOOT/config/
 cp -rf $BOOT/config/* /etc/sesmon-ext/
 

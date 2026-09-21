@@ -16,6 +16,16 @@ SES_DEV_DESCR="$3" # device description, e.g. "My JBOD"
 SES_ALERT_MSG="$4" # alert message (textual representation)
 SES_ALERT_JSON="$5" # alert JSON (see JSON files for reference)
 
+# Name the drives in the affected bays ("drive bay 10: disk22 + disk23 ..."), so the alert says what to look at. This
+# only adds a line: if the helper is missing, fails or has nothing to say (no bay in the alert), the alert is unchanged.
+SES_DRIVES=""
+if [ -n "$SES_ALERT_JSON" ] && [ -f /usr/local/emhttp/plugins/sesmon-ext/scripts/alert_context.php ]; then
+    SES_DRIVES="$(timeout 10 /usr/bin/php -q /usr/local/emhttp/plugins/sesmon-ext/scripts/alert_context.php "$SES_DEV_ADDR" "$SES_ALERT_JSON" "$SES_DEV_PATH" 2>/dev/null)"
+fi
+if [ -n "$SES_DRIVES" ]; then
+    SES_ALERT_MSG="${SES_DRIVES} -- ${SES_ALERT_MSG}"
+fi
+
 # Unraid's notification system doesn't like some special characters,
 # so we need to replace them for the notification system not to break:
 SES_ALERT_MSG="${SES_ALERT_MSG//=/:}" # bugfix for Unraid 7.1.x
