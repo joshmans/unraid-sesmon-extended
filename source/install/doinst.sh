@@ -32,7 +32,7 @@ mkdir -p $BOOT/config
 mkdir -p /etc/sesmon-ext
 mkdir -p /var/lib/sesmon-ext
 
-ln -sf /var/lib/sesmon-ext $DOCROOT/json
+ln -sfn /var/lib/sesmon-ext $DOCROOT/json   # -n: do not follow an existing link into the folder
 cp -nr $DOCROOT/defaults/* $BOOT/config/
 cp -rf $BOOT/config/* /etc/sesmon-ext/
 
