@@ -135,6 +135,82 @@ function sesext_service($do) {
     return ['ok' => $code === 0, 'output' => $out, 'running' => sesext_daemon_running(), 'errors' => $code === 0 ? [] : [$out]];
 }
 
+/**
+ * Run a command without a shell and stop it when it takes longer than $seconds.
+ * Returns [exit code, output, timedOut].
+ */
+function sesext_run_timeout($argv, $seconds) {
+    $proc = @proc_open($argv, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    if (!is_resource($proc)) { return [-1, 'The script could not be started', false]; }
+    foreach ($pipes as $p) { stream_set_blocking($p, false); }
+    $out = ''; $exit = -1; $timedOut = false; $start = microtime(true);
+    while (true) {
+        foreach ($pipes as $p) { $out .= (string)stream_get_contents($p); }
+        $st = proc_get_status($proc);
+        if (!$st['running']) { $exit = $st['exitcode']; break; }
+        if (microtime(true) - $start > $seconds) { proc_terminate($proc, 9); $timedOut = true; break; }
+        usleep(50000);
+    }
+    foreach ($pipes as $p) { $out .= (string)stream_get_contents($p); fclose($p); }
+    proc_close($proc);
+    return [$exit, trim($out), $timedOut];
+}
+
+/**
+ * Call a notification script the way sesmon does (device path, SAS address, description, message, change
+ * report) with a test message, so the user can see that alerts get through. The script is either the built-in
+ * one (it hands the message to Unraid's notification system, agents included) or one of the executable scripts
+ * of the configuration folder: never a path taken from the request.
+ */
+function sesext_test_notify($in) {
+    $mode = (string)($in['mode'] ?? '');
+    if ($mode === 'unraid') { $script = SESEXT_NOTIFY_SCRIPT; }
+    elseif ($mode === 'custom') { $script = (string)($in['script'] ?? ''); }
+    else { return ['ok' => false, 'errors' => ['Alerts for this device only go to the log: there is nothing to test']]; }
+    if ($script !== SESEXT_NOTIFY_SCRIPT && !in_array($script, sesext_notifier_scripts(), true)) {
+        return ['ok' => false, 'errors' => ['That is not one of the notification scripts of the configuration folder']];
+    }
+    $file = sesext_root() . $script;
+    if (!is_file($file) || !is_executable($file)) { return ['ok' => false, 'errors' => ["$script does not exist or is not executable"]]; }
+
+    $clean = fn($v, $max) => substr(preg_replace('/[\x00-\x1f\x7f]/', ' ', (string)$v), 0, $max);
+    $device = $clean($in['device'] ?? '', 100); $address = $clean($in['address'] ?? '', 40);
+    $description = $clean($in['description'] ?? '', 100);
+    $message = 'TEST: this is a test notification from the sesmon-ext plugin. If you can read this, alerts for this enclosure will reach you.';
+    $seconds = (int)(getenv('SESEXT_NOTIFY_TIMEOUT') ?: 20);
+    [$code, $out, $timedOut] = sesext_run_timeout([$file, $device, $address, $description, $message, '{"test":true}'], $seconds);
+    $ok = !$timedOut && $code === 0;
+    return ['ok' => $ok, 'script' => $script, 'exit' => $code, 'timed_out' => $timedOut, 'output' => substr($out, 0, 2000),
+            'errors' => $ok ? [] : [$timedOut ? "The script did not finish within $seconds seconds and was stopped" : "The script exited with status $code"]];
+}
+
+/** The previous version of each file (kept as name.bak on the flash when a file is saved), if it differs from the current one. */
+function sesext_backups() {
+    $p = sesext_paths(); $out = [];
+    foreach (glob($p['boot'] . '/*.bak') ?: [] as $bak) {
+        $name = substr(basename($bak), 0, -4);
+        if (!sesext_valid_name($name)) { continue; }
+        $cur = $p['etc'] . '/' . $name;
+        $differs = !is_file($cur) || file_get_contents($cur) !== file_get_contents($bak);
+        if ($differs) { $out[$name] = ['mtime' => filemtime($bak)]; }
+    }
+    ksort($out);
+    return $out;
+}
+
+/**
+ * Put the previous version of a file back. It goes through the normal save (checked first, the current version
+ * becomes the new .bak), so restoring twice undoes the restore.
+ */
+function sesext_restore($name) {
+    if (!sesext_valid_name($name)) { return ['ok' => false, 'errors' => ['Not a configuration file name']]; }
+    $bak = sesext_paths()['boot'] . '/' . $name . '.bak';
+    if (!is_file($bak)) { return ['ok' => false, 'errors' => ["There is no previous version of $name"]]; }
+    $res = sesext_save_file($name, (string)file_get_contents($bak));
+    if (!$res['ok']) { $res['errors'] = array_merge(['The previous version was not restored.'], $res['errors']); }
+    return $res;
+}
+
 /** Everything the page needs in one go. */
 function sesext_state() {
     $p = sesext_paths();
@@ -150,7 +226,7 @@ function sesext_state() {
         'presets' => sesext_presets(), 'field_types' => sesext_field_types(),
         'defaults' => ['config' => sesext_monitor_defaults(), 'notifier' => sesext_notify_defaults()],
         'notify_script' => SESEXT_NOTIFY_SCRIPT, 'scripts' => sesext_notifier_scripts(), 'files' => sesext_list_files(),
-        'daemon' => ['running' => sesext_daemon_running()],
+        'daemon' => ['running' => sesext_daemon_running()], 'backups' => sesext_backups(),
         'lsscsi' => $lc === 0 ? implode("\n", array_filter(explode("\n", $lsscsi), fn($l) => strpos($l, 'enclosu') !== false)) : '',
     ];
     if ($loaded['config'] !== null) {
@@ -174,6 +250,8 @@ function sesext_handle($action, $in) {
             $form = json_decode((string)($in['form'] ?? ''), true);
             return is_array($form) ? sesext_save_form($form) : ['ok' => false, 'errors' => ['The form data was not understood']];
         case 'service':   return sesext_service($in['do'] ?? '');
+        case 'test_notify': return sesext_test_notify($in);
+        case 'restore':   return sesext_restore($in['name'] ?? '');
         default:          return ['ok' => false, 'errors' => ['Unknown action']];
     }
 }

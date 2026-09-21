@@ -95,6 +95,8 @@ Markdown="false"
         <div id="sx-rawmsg"></div>
         <textarea id="sx-editor"></textarea>
         <input type="button" id="sx-saveraw" value="Save file">
+        <input type="button" id="sx-restore" value="Restore previous version" style="display:none;">
+        <span id="sx-restoreinfo" class="sx-hint"></span>
     </details>
 </div>
 
@@ -134,10 +136,11 @@ try {
     function notice(kind, html) { $('#sx-notices').append('<div class="sx-box ' + kind + '">' + html + '</div>'); }
     function list(items) { return '<ul>' + items.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul>'; }
     function clearNotices() { $('#sx-notices').empty(); }
-    function showResult(res, what) {
+    function showResult(res, what, verb) {
+        verb = verb || 'saved';
         clearNotices();
-        if (!res.ok) { notice('err', '<strong>' + esc(what) + ' was not saved.</strong>' + list(res.errors || ['Unknown error'])); return; }
-        var kind = 'good', body = '<strong>' + esc(what) + ' saved.</strong>';
+        if (!res.ok) { notice('err', '<strong>' + esc(what) + ' was not ' + verb + '.</strong>' + list(res.errors || ['Unknown error'])); return; }
+        var kind = 'good', body = '<strong>' + esc(what) + ' ' + verb + '.</strong>';
         if ((res.warnings || []).length) { kind = 'warn'; body += list(res.warnings); }
         if (res.test && res.test.checked && !res.test.ok) {
             kind = 'warn';
@@ -217,6 +220,9 @@ try {
                 return '<option value="' + esc(s) + '"' + (s === r.notifier.script ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>';
             if (!S.scripts.length) { h += '<div class="sx-hint">Create a script under Advanced (New script...).</div>'; }
         }
+        if (r.notifier.mode === 'unraid' || (r.notifier.mode === 'custom' && r.notifier.script)) {
+            h += '<div><a class="sx-link sx-testnotify" data-i="' + i + '" title="Sends a clearly marked test message through this notification path">Send test notification</a></div>';
+        }
         return h;
     }
     function statusCell(i) {
@@ -280,11 +286,11 @@ try {
         if (this.value === 'custom' && r.notifier.script === S.notify_script) { r.notifier.script = ''; }
         setDirty(true); render();
     });
-    on('change', '.sx-notiscript', function () { rows[+$(this).data('i')].notifier.script = this.value; setDirty(true); });
+    on('change', '.sx-notiscript', function () { rows[+$(this).data('i')].notifier.script = this.value; setDirty(true); render(); }); // redraw: the test link depends on a script being chosen
     on('click', '.sx-more', function () { var r = rows[+$(this).data('i')]; r.open = !r.open; render(); });
     on('click', '.sx-del', function () {
         var r = rows[+$(this).data('i')];
-        swal({title: 'Remove this device?', text: 'It is removed from the configuration when you save.', type: 'warning', showCancelButton: true}, function () { r.removed = true; setDirty(true); render(); });
+        swal({title: 'Remove this device?', text: 'It is removed from the configuration when you save.', type: 'warning', showCancelButton: true}, function (ok) { if (ok === false) { return; } r.removed = true; setDirty(true); render(); });
     });
     on('change', '.sx-replace', function () {
         if (this.value === '') { return; }
@@ -306,6 +312,20 @@ try {
     });
     on('change', '.sx-bool', function () { var $t = $(this); rows[+$t.data('i')].config[$t.data('k')] = this.checked; setDirty(true); });
 
+    on('click', '.sx-testnotify', function () {
+        var r = rows[+$(this).data('i')];
+        var via = r.notifier.mode === 'unraid' ? 'Unraid\'s notification system (email, push and any other agents you set up there are included)' : r.notifier.script;
+        swal({title: 'Send a test notification?', text: 'A real notification is sent through ' + via + '. It says clearly that it is a test.', type: 'warning', showCancelButton: true}, function (ok) {
+            if (ok === false) { return; }
+            post({action: 'test_notify', mode: r.notifier.mode, script: r.notifier.script, device: r.status.resolved || r.device, address: r.address, description: r.description}).done(function (res) {
+                clearNotices();
+                var out = res.output ? '<pre>' + esc(res.output) + '</pre>' : '';
+                if (res.ok) { notice('good', '<strong>Test notification handed over.</strong> The script finished successfully. Check your Unraid notifications and the agents you set up there; if nothing arrives, the fault is in that setup, not in this plugin.' + out); }
+                else { notice('err', '<strong>The test notification failed.</strong>' + list(res.errors || ['Unknown error']) + out); }
+            }).fail(failed);
+        });
+    });
+
     /* --------------------------------------------------------- server */
     function post(data) { return $.post(API, data, null, 'json'); }
     function failed(x) { clearNotices(); notice('err', 'The server did not answer as expected (' + esc(x.status + ' ' + x.statusText) + ').'); }
@@ -322,7 +342,7 @@ try {
                 $('#sx-form').show(); if (!keepNotices) { showProblems(); }
             }
             $('#sx-lsscsi-wrap').toggle(!!st.lsscsi); $('#sx-lsscsi').text(st.lsscsi);
-            fillFiles();
+            fillFiles(); updateRestore();
             if (editor && editorFile === 'config.yaml') { editor.setValue(st.raw); }
         }).fail(failed);
     }
@@ -369,11 +389,33 @@ try {
         editor.setValue(S.raw);
     }
     $('#sx-adv').on('toggle', function () { if (this.open && S) { openAdvanced(); } });
-    $('#sx-file').on('change', function () {
-        editorFile = this.value; $('#sx-rawmsg').empty();
-        $.getJSON(API, {action: 'read', name: editorFile}).done(function (res) {
+    function readEditorFile() {
+        return $.getJSON(API, {action: 'read', name: editorFile}).done(function (res) {
             if (res.ok) { editor.setOption('mode', /\.yaml$/.test(editorFile) ? 'yaml' : null); editor.setValue(res.text); }
             else { $('#sx-rawmsg').html('<div class="sx-box err">' + esc(res.errors.join(' ')) + '</div>'); }
+        });
+    }
+    $('#sx-file').on('change', function () {
+        editorFile = this.value; $('#sx-rawmsg').empty();
+        readEditorFile(); updateRestore();
+    });
+    // offered when the file has a previous version that differs from the current one
+    function updateRestore() {
+        var b = S && S.backups && S.backups[editorFile];
+        $('#sx-restore').toggle(!!b);
+        $('#sx-restoreinfo').text(b ? 'The previous version was saved ' + new Date(b.mtime * 1000).toLocaleString() + '.' : '');
+    }
+    $('#sx-restore').on('click', function () {
+        var name = editorFile;
+        var warn = (dirty && name === 'config.yaml') ? 'Selections above that are not saved are discarded. ' : '';
+        swal({title: 'Restore the previous version of ' + name + '?', text: warn + 'The current version becomes the previous one, so restoring again undoes this.', type: 'warning', showCancelButton: true}, function (ok) {
+            if (ok === false) { return; }
+            post({action: 'restore', name: name}).done(function (res) {
+                $('#sx-rawmsg').empty();
+                if (!res.ok) { $('#sx-rawmsg').html('<div class="sx-box err"><strong>' + esc(name) + ' was not restored.</strong>' + list(res.errors || []) + '</div>'); return; }
+                showResult(res, name, 'restored');
+                load(true).done(function () { readEditorFile(); });
+            }).fail(failed);
         });
     });
     $('#sx-newfile').on('click', function () {
@@ -393,7 +435,7 @@ try {
     }
     $('#sx-saveraw').on('click', function () {
         if (dirty && editorFile === 'config.yaml') {
-            swal({title: 'Discard your selections?', text: 'You changed selections above that are not saved. Saving this file replaces them with what the file says.', type: 'warning', showCancelButton: true}, saveRaw);
+            swal({title: 'Discard your selections?', text: 'You changed selections above that are not saved. Saving this file replaces them with what the file says.', type: 'warning', showCancelButton: true}, function (ok) { if (ok !== false) { saveRaw(); } });
         } else { saveRaw(); }
     });
 

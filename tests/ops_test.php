@@ -108,6 +108,58 @@ ok($s['form_ok'], 'missing file: form usable'); eq($s['devices'], [], 'missing f
 $r = sesext_save_form(['devices' => [['orig' => null, 'address' => '0x500a098008561d10', 'description' => 'NetApp', 'enabled' => true, 'notifier' => ['mode' => 'unraid']]]]);
 ok($r['ok'], 'missing file: form save creates the file'); ok(file_exists("$etc/config.yaml") && file_exists("$boot/config.yaml"), 'missing file: written to both places');
 
+// ---- test notification
+$argsScript = "$etc/args.sh";
+file_put_contents($argsScript, "#!/bin/sh\nprintf '%s|' \"$@\"\n"); chmod($argsScript, 0755);
+$r = sesext_test_notify(['mode' => 'custom', 'script' => '/etc/sesmon-ext/args.sh', 'device' => '/dev/sg34', 'address' => '0x500a098008561d10', 'description' => 'NetApp']);
+ok($r['ok'], 'test notify: custom script runs: ' . json_encode($r['errors'] ?? []));
+$parts = explode('|', $r['output']);
+eq(array_slice($parts, 0, 3), ['/dev/sg34', '0x500a098008561d10', 'NetApp'], 'test notify: device, address and description are passed as $1 to $3');
+ok(strpos($parts[3], 'TEST:') === 0, 'test notify: $4 is a message that says it is a test'); eq($parts[4], '{"test":true}', 'test notify: $5 is a JSON change report');
+$r = sesext_test_notify(['mode' => 'unraid']);
+ok($r['ok'] && $r['output'] === 'hi', 'test notify: the built-in script is called for the Unraid mode');
+ok(!sesext_test_notify(['mode' => 'log'])['ok'], 'test notify: nothing to test when alerts only go to the log');
+foreach (['/etc/passwd', '/etc/sesmon-ext/../../bin/sh', '/etc/sesmon-ext/nope.sh', '/bin/echo', ''] as $bad) {
+    $r = sesext_test_notify(['mode' => 'custom', 'script' => $bad]);
+    ok(!$r['ok'] && strpos($r['errors'][0], 'not one of the notification scripts') !== false, 'test notify: refuses a script that is not offered: ' . json_encode($bad));
+}
+file_put_contents("$etc/fail.sh", "#!/bin/sh\necho boom; exit 3\n"); chmod("$etc/fail.sh", 0755);
+$r = sesext_test_notify(['mode' => 'custom', 'script' => '/etc/sesmon-ext/fail.sh']);
+ok(!$r['ok'] && $r['exit'] === 3 && $r['output'] === 'boom', 'test notify: a failing script is reported with its output and exit status');
+file_put_contents("$etc/slow.sh", "#!/bin/sh\nsleep 5\n"); chmod("$etc/slow.sh", 0755);
+putenv('SESEXT_NOTIFY_TIMEOUT=1'); $t = microtime(true);
+$r = sesext_test_notify(['mode' => 'custom', 'script' => '/etc/sesmon-ext/slow.sh']);
+ok(!$r['ok'] && $r['timed_out'] && microtime(true) - $t < 4, 'test notify: a script that hangs is stopped after the timeout');
+putenv('SESEXT_NOTIFY_TIMEOUT');
+$r = sesext_test_notify(['mode' => 'custom', 'script' => '/etc/sesmon-ext/args.sh', 'description' => "line\nbreak" . str_repeat('x', 300)]);
+ok(strpos(explode('|', $r['output'])[2], "\n") === false && strlen(explode('|', $r['output'])[2]) <= 100, 'test notify: control characters and length are cleaned from what is passed on');
+foreach (['args.sh', 'fail.sh', 'slow.sh'] as $f) { unlink("$etc/$f"); }
+eq(sesext_handle('test_notify', ['mode' => 'unraid'])['ok'], true, 'handle: test_notify is routed');
+
+// ---- restoring the previous version
+$v1 = "devices:\n  - address: \"0x500a098008561d10\"\n    type: 0\n    description: \"one\"\n    enabled: true\n";
+$v2 = str_replace('one', 'two', $v1);
+@unlink("$boot/config.yaml.bak");
+sesext_save_file('config.yaml', $v1); sesext_save_file('config.yaml', $v2);
+eq(array_keys(sesext_backups()), ['config.yaml'], 'restore: a differing previous version is offered');
+ok(sesext_backups()['config.yaml']['mtime'] > 0, 'restore: with its time');
+eq(array_keys(sesext_state()['backups']), ['config.yaml'], 'restore: state carries the backups');
+$r = sesext_restore('config.yaml');
+ok($r['ok'], 'restore: works'); eq(file_get_contents("$etc/config.yaml"), $v1, 'restore: /etc has the previous version');
+eq(file_get_contents("$boot/config.yaml"), $v1, 'restore: the flash has it too'); eq(file_get_contents("$boot/config.yaml.bak"), $v2, 'restore: the replaced version is now the backup (restoring twice undoes it)');
+sesext_restore('config.yaml'); eq(file_get_contents("$etc/config.yaml"), $v2, 'restore: a second restore brings the newer version back');
+file_put_contents("$boot/config.yaml.bak", file_get_contents("$etc/config.yaml"));
+eq(sesext_backups(), [], 'restore: nothing is offered when the backup equals the current file');
+$before = file_get_contents("$etc/config.yaml");
+file_put_contents("$boot/config.yaml.bak", "devices:\n  - BADKEY: 1\n");
+$r = sesext_restore('config.yaml');
+ok(!$r['ok'] && strpos(implode(' ', $r['errors']), 'BADKEY') !== false, 'restore: a previous version that sesmon rejects is not restored, and the reason is shown');
+eq(file_get_contents("$etc/config.yaml"), $before, 'restore: a refused restore leaves the current file alone');
+unlink("$boot/config.yaml.bak");
+ok(!sesext_restore('config.yaml')['ok'], 'restore: no backup, no restore');
+foreach (['../config.yaml', 'x.txt', ''] as $bad) { ok(!sesext_restore($bad)['ok'], 'restore: refuses the name ' . json_encode($bad)); }
+eq(sesext_handle('restore', ['name' => 'nope.yaml'])['ok'], false, 'handle: restore is routed');
+
 // ---- the router
 eq(sesext_handle('nope', [])['ok'], false, 'handle: unknown action');
 eq(sesext_handle('save_form', ['form' => 'not json'])['ok'], false, 'handle: garbage form');
