@@ -19,7 +19,7 @@
  */
 function sesext_device_folders() {
     $result = [];
-    $baseDir = '/var/lib/sesmon-ext';
+    $baseDir = rtrim((string)getenv('SESEXT_ROOT'), '/') . '/var/lib/sesmon-ext'; // the root is empty on a real server
 
     try {
         $subdirs = array_filter(glob($baseDir . '/*'), 'is_dir');

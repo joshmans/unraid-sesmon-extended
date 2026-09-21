@@ -17,7 +17,7 @@
  * included in all copies or substantial portions of the Software.
  *
  */
-require_once '/usr/local/emhttp/plugins/sesmon-ext/include/sesext_helpers.php';
+require_once __DIR__ . '/sesext_helpers.php';
 
 header('Content-Type: application/json');
 echo json_encode(sesext_device_folders());

@@ -1,0 +1,81 @@
+{
+ "device": {
+  "type": 0,
+  "path": "/dev/sg34",
+  "address": "0x500a098008561d10",
+  "description": "NETAPP DS424IOM12A"
+ },
+ "detected_at": "2026-09-20T12:00:00-05:00",
+ "changes": [
+  {
+   "id": "3#2",
+   "element_type": 3,
+   "element_type_number": 2,
+   "element_type_desc": "Cooling",
+   "before": {
+    "element_type": 3,
+    "element_type_number": 2,
+    "element_type_desc": "Cooling",
+    "status": 1,
+    "status_desc": "OK",
+    "prdfail": 0,
+    "disabled": 0,
+    "swap": 0
+   },
+   "after": {
+    "element_type": 3,
+    "element_type_number": 2,
+    "element_type_desc": "Cooling",
+    "status": 2,
+    "status_desc": "Critical",
+    "prdfail": 1,
+    "disabled": 0,
+    "swap": 0
+   }
+  },
+  {
+   "id": "4#5",
+   "element_type": 4,
+   "element_type_number": 5,
+   "element_type_desc": "Temperature sensor",
+   "before": {
+    "element_type": 4,
+    "element_type_number": 5,
+    "element_type_desc": "Temperature sensor",
+    "status": 1,
+    "status_desc": "OK",
+    "prdfail": 0,
+    "disabled": 0,
+    "swap": 0,
+    "temperature": "41 C"
+   },
+   "after": {
+    "element_type": 4,
+    "element_type_number": 5,
+    "element_type_desc": "Temperature sensor",
+    "status": 3,
+    "status_desc": "Noncritical",
+    "prdfail": 0,
+    "disabled": 0,
+    "swap": 0,
+    "temperature": "58 C"
+   }
+  },
+  {
+   "id": "1#18",
+   "element_type": 1,
+   "element_type_number": 18,
+   "element_type_desc": "Device slot",
+   "after": {
+    "element_type": 1,
+    "element_type_number": 18,
+    "element_type_desc": "Device slot",
+    "status": 1,
+    "status_desc": "OK",
+    "prdfail": 0,
+    "disabled": 0,
+    "swap": 0
+   }
+  }
+ ]
+}

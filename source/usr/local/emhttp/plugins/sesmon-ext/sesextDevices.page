@@ -83,14 +83,79 @@ Markdown="false"
     .sesext-device-content {
         display: none;
     }
+
+    .sesext-viewbar { margin: 0 0 10px 0; }
+    .sesext-viewbar a { cursor: pointer; padding: 2px 12px; border: 1px solid #888; margin-right: 4px; }
+    .sesext-viewbar a.active { font-weight: bold; text-decoration: underline; }
+    .sesext-group-row td { font-weight: bold; padding-top: 14px; }
+    .sesext-group-row .sesext-status-summary { float: none; margin-left: 14px; font-weight: normal; }
+    .sesext-chip { border: 1px solid; border-radius: 9px; padding: 0 7px; margin-right: 4px; color: red; white-space: nowrap; }
+    .sesext-note { margin: 8px 0; opacity: .75; }
 </style>
+
+<div class="sesext-viewbar">
+    View: <a data-view="friendly">Friendly</a><a data-view="raw">Raw</a>
+    <span id="sesext-unitbar" style="margin-left:16px;">Temperature: <a data-unit="C">&deg;C</a><a data-unit="F">&deg;F</a></span>
+    <span id="sesext-viewhint" class="sesext-note" style="margin-left:10px;"></span>
+</div>
 
 <div id="sesext-content"></div>
 
+<script src="<?=autov('/plugins/sesmon-ext/js/sesext_friendly.js');?>"></script>
 <script>
 try {
     function sesext_safe(val) {
         return (val !== undefined && val !== null) ? val : '';
+    }
+
+    // Friendly shows names and plain words (see js/sesext_friendly.js); Raw shows the values as sesmon reports them
+    var sesext_view = 'friendly';
+    try { var sesext_saved = localStorage.getItem('sesext_view'); if (sesext_saved === 'raw' || sesext_saved === 'friendly') { sesext_view = sesext_saved; } } catch (e) {}
+    var sesext_unit = 'C';   // temperatures in Celsius (as reported) or Fahrenheit; only the Friendly view converts
+    try { var sesext_savedUnit = localStorage.getItem('sesext_unit'); if (sesext_savedUnit === 'C' || sesext_savedUnit === 'F') { sesext_unit = sesext_savedUnit; } } catch (e) {}
+    var sesext_last = null;
+
+    function sesext_esc(s) {
+        return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; });
+    }
+    function sesext_pill(st) {
+        return st ? '<span class="' + st.cls + '" title="' + sesext_esc(st.tip) + '">' + sesext_esc(st.label) + '</span>' : '';
+    }
+    function sesext_chips(list) {
+        return list.map(function (f) { return '<span class="sesext-chip" title="' + sesext_esc(f.tip) + '">' + sesext_esc(f.label) + '</span>'; }).join('');
+    }
+    function sesext_friendlySummary(counts) {
+        return SesextFriendly.summarize(counts).map(function (x) { return '<span class="' + x.cls + '">' + x.n + ' ' + sesext_esc(x.label) + '</span>'; });
+    }
+    // the elements, grouped by kind, with names, status words, readings and notes
+    function sesext_friendlyTable(fr) {
+        var h = '<table class="sesext-elements-table tablesorter"><thead><tr><th>Component</th><th>Status</th><th>Reading</th><th>Notes</th></tr></thead><tbody>';
+        fr.groups.forEach(function (g) {
+            h += '<tr class="sesext-group-row"><td colspan="4">' + sesext_esc(g.title) + '<span class="sesext-status-summary">' + sesext_friendlySummary(g.counts).join(' | ') + '</span></td></tr>';
+            g.items.forEach(function (i) {
+                h += '<tr><td title="Element ' + sesext_esc(i.id) + '">' + sesext_esc(i.name) + '</td><td>' + sesext_pill(i.status) + '</td><td>' + sesext_esc(i.reading) + '</td><td>' + sesext_chips(i.flags) + '</td></tr>';
+            });
+        });
+        h += '</tbody></table>';
+        if (fr.hidden > 0) {
+            h += '<div class="sesext-note">' + fr.hidden + ' overall entries that this enclosure does not report are hidden. Switch to Raw to see every element.</div>';
+        }
+        return h;
+    }
+    // one alert (the changes sesmon detected), before and after in words
+    function sesext_friendlyAlert(alertData) {
+        var h = '<table class="sesext-alert-file-table tablesorter"><thead>';
+        h += '<tr class="sesext-alert-file-header"><th colspan="5"><strong>Change Detected:</strong> ' + sesext_esc(sesext_formatDate(sesext_safe(alertData.detected_at))) + ' ' + sesext_getTimeAgo(alertData.detected_at, false) + '</th></tr>';
+        h += '<tr><th>Component</th><th>Before</th><th>After</th><th>Reading</th><th>Notes</th></tr></thead><tbody>';
+        $.each(alertData.changes, function (i, change) {
+            if (!change) return;
+            var d = SesextFriendly.describeChange(change, sesext_unit);
+            var notes = sesext_chips(d.flags);
+            if (d.flagsBefore.length) { notes += ' <span class="sesext-note">(before: ' + sesext_esc(d.flagsBefore.map(function (f) { return f.label; }).join(', ')) + ')</span>'; }
+            h += '<tr class="alert-change-row"><td title="Element ' + sesext_esc(change.id) + '">' + sesext_esc(d.name) + '</td><td>' + (d.before ? sesext_pill(d.before) : '<span class="sesext-note">new</span>') +
+                 '</td><td>' + (d.after ? sesext_pill(d.after) : '<span class="sesext-note">gone</span>') + '</td><td>' + sesext_esc(d.reading) + '</td><td>' + notes + '</td></tr>';
+        });
+        return h + '</tbody></table>';
     }
 
     function sesext_formatDate(date) {
@@ -228,6 +293,13 @@ try {
         if (statusCounts[1] > 0) deviceSummary.push('<span class="sesext-status-ok">' + statusCounts[1] + ' OK</span>');
         if (statusCounts.other > 0) deviceSummary.push('<span class="sesext-status-other">' + statusCounts.other + ' Other</span>');
 
+        var fr = sesext_view === 'friendly' ? SesextFriendly.group(data.raw, sesext_unit) : null;
+        if (fr) {
+            deviceSummary = [];
+            if (totalAlerts > 0) deviceSummary.push('<span class="sesext-alert-count">' + totalAlerts + ' Alert' + (totalAlerts > 1 ? 's' : '') + '</span>');
+            deviceSummary = deviceSummary.concat(sesext_friendlySummary(fr.counts));
+        }
+
         var alertTimeHtml = '';
         if (alertDataArray.length > 0) {
             alertDataArray.sort(function(a, b) {
@@ -251,8 +323,8 @@ try {
         if (alertDataArray.length > 0) {
             var alertSummary = [];
             if (alertCounts[2] > 0) alertSummary.push('<span class="sesext-status-critical">' + alertCounts[2] + ' Critical</span>');
-            if (alertCounts[3] > 0) alertSummary.push('<span class="sesext-status-noncritical">' + alertCounts[3] + ' Noncritical</span>');
-            if (alertCounts[4] > 0) alertSummary.push('<span class="sesext-status-unrecoverable">' + alertCounts[4] + ' Unrecoverable</span>');
+            if (alertCounts[3] > 0) alertSummary.push('<span class="sesext-status-noncritical">' + alertCounts[3] + (fr ? ' Warning' : ' Noncritical') + '</span>');
+            if (alertCounts[4] > 0) alertSummary.push('<span class="sesext-status-unrecoverable">' + alertCounts[4] + (fr ? ' Failed' : ' Unrecoverable') + '</span>');
             if (alertCounts[1] > 0) alertSummary.push('<span class="sesext-status-ok">' + alertCounts[1] + ' OK</span>');
             if (alertCounts.other > 0) alertSummary.push('<span class="sesext-status-other">' + alertCounts.other + ' Other</span>');
 
@@ -264,6 +336,7 @@ try {
             // Alerts section tables (one per alert)
             $.each(alertDataArray, function(idx, alertData) {
                 if (!alertData || !Array.isArray(alertData.changes)) return;
+                if (fr) { html += sesext_friendlyAlert(alertData); return; }
 
                 // Alert table header
                 html += '<table class="sesext-alert-file-table tablesorter"><thead>';
@@ -319,37 +392,42 @@ try {
 
         // Elements sections header
         html += '<div class="sesext-elements-section-header">';
+        if (fr) { elementSummary = sesext_friendlySummary(fr.counts); }
         html += '<strong>ELEMENTS</strong> <span class="sesext-status-summary">' + elementSummary.join(' | ') + '</span>';
         html += '</div>';
 
-        // Elements table
-        html += '<table class="sesext-elements-table tablesorter"><thead>';
+        if (fr) {
+            html += sesext_friendlyTable(fr) + '</div><br>';
+        } else {
+            // Elements table
+            html += '<table class="sesext-elements-table tablesorter"><thead>';
 
-        // Elements table header
-        html += '<tr>';
-        html += '<th>Element ID</th><th>Description</th><th>Status</th><th>Status Desc</th>';
-        html += '<th>Prdfail</th><th>Disabled</th><th>Swap</th><th>Extra</th></tr>';
-        html += '</thead><tbody>';
+            // Elements table header
+            html += '<tr>';
+            html += '<th>Element ID</th><th>Description</th><th>Status</th><th>Status Desc</th>';
+            html += '<th>Prdfail</th><th>Disabled</th><th>Swap</th><th>Extra</th></tr>';
+            html += '</thead><tbody>';
 
-        // Elements table rows
-        var sortedKeys = Object.keys(data.raw).sort(sesext_sortElementId);
-        $.each(sortedKeys, function(index, elementId) {
-            var element = data.raw[elementId];
-            if (!element) return;
+            // Elements table rows
+            var sortedKeys = Object.keys(data.raw).sort(sesext_sortElementId);
+            $.each(sortedKeys, function(index, elementId) {
+                var element = data.raw[elementId];
+                if (!element) return;
 
-            var extra = [];
-            if (element.temperature) extra.push('Temp: ' + element.temperature);
-            if (element.voltage) extra.push('Volt: ' + element.voltage + 'V');
-            if (element.amperage) extra.push('Amp: ' + element.amperage + 'A');
+                var extra = [];
+                if (element.temperature) extra.push('Temp: ' + element.temperature);
+                if (element.voltage) extra.push('Volt: ' + element.voltage + 'V');
+                if (element.amperage) extra.push('Amp: ' + element.amperage + 'A');
 
-            html += '<tr><td>' + sesext_safe(elementId) + '</td><td>' + sesext_safe(element.element_type_desc) + '</td>';
-            html += '<td>' + sesext_safe(element.status) + '</td>';
-            html += '<td class="' + sesext_getStatusClass(element.status) + '">' + sesext_safe(element.status_desc) + '</td>';
-            html += '<td>' + sesext_safe(element.prdfail) + '</td><td>' + sesext_safe(element.disabled) + '</td><td>' + sesext_safe(element.swap) + '</td>';
-            html += '<td>' + extra.join(', ') + '</td></tr>';
-        });
+                html += '<tr><td>' + sesext_safe(elementId) + '</td><td>' + sesext_safe(element.element_type_desc) + '</td>';
+                html += '<td>' + sesext_safe(element.status) + '</td>';
+                html += '<td class="' + sesext_getStatusClass(element.status) + '">' + sesext_safe(element.status_desc) + '</td>';
+                html += '<td>' + sesext_safe(element.prdfail) + '</td><td>' + sesext_safe(element.disabled) + '</td><td>' + sesext_safe(element.swap) + '</td>';
+                html += '<td>' + extra.join(', ') + '</td></tr>';
+            });
 
-        html += '</tbody></table></div><br>';
+            html += '</tbody></table></div><br>';
+        }
 
         $(targetContainer).append(html);
     }
@@ -441,7 +519,23 @@ try {
             });
         });
 
-        results.forEach(result => {
+        sesext_last = results;
+        sesext_render();
+    }
+
+    // draw the last data in the chosen view (also used when the view is switched, without fetching again)
+    function sesext_render() {
+        if (!sesext_last) return;
+        const newContent = $('<div/>');
+
+        $('[data-toggle-id]').each(function() {
+            const targetId = '#' + $(this).data('toggle-id');
+            if ($(targetId).is(':visible')) {
+                openDeviceIds[targetId] = true;
+            }
+        });
+
+        sesext_last.forEach(result => {
             sesext_buildDevice(result.folderName, result.data, result.alertDataArray, newContent);
         });
 
@@ -462,7 +556,27 @@ try {
         openDeviceIds = {};
     }
 
+    function sesext_setUnit(u) {
+        sesext_unit = u;
+        try { localStorage.setItem('sesext_unit', u); } catch (e) {}
+        $('.sesext-viewbar a[data-unit]').removeClass('active').filter('[data-unit="' + u + '"]').addClass('active');
+        sesext_render();
+    }
+
+    function sesext_setView(v) {
+        sesext_view = v;
+        try { localStorage.setItem('sesext_view', v); } catch (e) {}
+        $('.sesext-viewbar a[data-view]').removeClass('active').filter('[data-view="' + v + '"]').addClass('active');
+        $('#sesext-unitbar').toggle(v === 'friendly'); // Raw shows the values exactly as sesmon reports them, in Celsius
+        $('#sesext-viewhint').text(v === 'raw' ? 'Values exactly as sesmon reports them.' : 'Hover a status for what it means. Switch to Raw for the values as reported.');
+        sesext_render();
+    }
+
     $(document).ready(function() {
+        $('.sesext-viewbar a[data-unit]').removeClass('active').filter('[data-unit="' + sesext_unit + '"]').addClass('active');
+        sesext_setView(sesext_view);
+        $(document).on('click', '.sesext-viewbar a[data-view]', function() { sesext_setView($(this).data('view')); });
+        $(document).on('click', '.sesext-viewbar a[data-unit]', function() { sesext_setUnit($(this).data('unit')); });
         sesext_loadData();
         timers.sesext_loadData = setInterval(sesext_loadData, 15000);
 
