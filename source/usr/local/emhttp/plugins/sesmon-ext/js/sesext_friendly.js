@@ -19,7 +19,8 @@
         25: {one: 'SAS connector',        many: 'SAS connectors',        order: 7},
         7:  {one: 'Enclosure controller', many: 'Enclosure controllers', order: 8},
         14: {one: 'Enclosure',            many: 'Enclosure',             order: 9},
-        12: {one: 'Display',              many: 'Displays',              order: 10}
+        12: {one: 'Display',              many: 'Displays',              order: 10},
+        23: {one: 'HBA port',             many: 'HBA ports',             order: 1}   // "array device slot": what an HBA's virtual enclosure lists
     };
 
     // the SES status codes; 'bucket' is what the header counts them as
@@ -65,6 +66,7 @@
         if (!base) { return {label: statusDesc || 'Unknown', cls: '', bucket: 'other', tip: 'SES status ' + status + '.'}; }
         var label = base.label;
         if (s === 5 && Number(type) === 1) { label = 'Empty'; }
+        if (s === 5 && Number(type) === 23) { label = 'No drive'; }
         if (s === 5 && Number(type) === 25) { label = 'Not connected'; }
         return {label: label, cls: base.cls, bucket: base.bucket, tip: base.tip + ' (SES status ' + s + ', "' + (statusDesc || base.label) + '")'};
     }
@@ -103,9 +105,41 @@
         return Number(number) === -1 ? t.many + ' (overall)' : t.one + ' ' + number;
     }
 
-    /** The per-type "overall" entries (number -1) are usually reported as unsupported: noise, not information. */
-    function isHiddenOverall(el) {
-        return !!el && Number(el.element_type_number) === -1 && Number(el.status) === 0;
+    /**
+     * Elements the enclosure reports no status for (0, "unsupported"): the per-type "overall" entries (number -1) usually,
+     * and the unused slots of a virtual enclosure (an HBA lists 48 slots and uses 16). Noise, not information.
+     */
+    function isNotReported(el) {
+        return !!el && Number(el.status) === 0;
+    }
+
+    /**
+     * The drive(s) in a bay for display, from the bay the server named (see include/sesext_bays.php), with the drive
+     * temperatures in the given unit: {multi, head, lines: [{name, url, text, tip}], lastKnown}, or null for a bay without a
+     * drive. A bay that holds one physical drive presenting several disks (dual-actuator) gets a head line for the drive and
+     * a line per disk.
+     */
+    function driveInfo(bay, unit) {
+        if (!bay || !bay.drives || !bay.drives.length) { return null; }
+        var multi = !!bay.multi;
+        var lines = bay.drives.map(function (d) {
+            var bits = [];
+            if (!multi && d.title) { bits.push(d.title); }
+            if (d.size) { bits.push(d.size); }
+            if (d.standby) { bits.push('standby'); }
+            else if (d.temp_c !== null && d.temp_c !== undefined) { bits.push(temperature(d.temp_c + ' C', unit)); }
+            if (d.role === 'unassigned') { bits.push('not in the array or a pool'); }
+            var tip = ['/dev/' + d.dev, d.ident, d.unraid ? d.role : 'not managed by Unraid'].filter(function (x) { return x && x !== '/dev/undefined'; }).join(' \u00b7 ');
+            return {name: d.name, url: d.url || null, text: bits.join(' \u00b7 '), tip: tip};
+        });
+        var head = multi ? bay.drives[0].title + ' \u00b7 ' + bay.total_size + ' (' + bay.drives.length + ' disks)' : '';
+        return {multi: multi, head: head, lines: lines, lastKnown: bay.last_known || null};
+    }
+
+    /** What to add to a bay's status tooltip when the bay is a Warning that holds one drive presenting several disks. */
+    function bayHint(bay, st) {
+        if (!bay || !bay.multi || st.bucket !== 'warn') { return ''; }
+        return ' This bay holds one drive that shows up as ' + bay.drives.length + ' disks; some shelves report that as non-critical, but the enclosure does not say why.';
     }
 
     function parseId(id) {
@@ -119,26 +153,32 @@
      * Returns {groups: [{type, title, singular, items: [{id, el, name, status, reading, flags}], counts}], hidden: n, counts}
      * where counts maps a bucket (ok, warn, ...) to how many visible elements are in it.
      */
-    function group(raw, unit) {
+    function group(raw, unit, ctx) {
+        var bays = (ctx && ctx.bays) || {};
         var byType = {}, hidden = 0, total = {};
         Object.keys(raw || {}).forEach(function (id) {
             var el = raw[id];
             if (!el || el.status === undefined || el.status === null) { return; }
-            if (isHiddenOverall(el)) { hidden++; return; }
+            if (isNotReported(el)) { hidden++; return; }
             var ids = parseId(id);
             var type = el.element_type !== undefined ? el.element_type : ids[0];
             var number = el.element_type_number !== undefined ? el.element_type_number : ids[1];
             var st = statusInfo(el.status, el.status_desc, type);
+            var bay = bays[id] || null;
+            var hint = bayHint(bay, st);
+            if (hint) { st = {label: st.label, cls: st.cls, bucket: st.bucket, tip: st.tip + hint}; }
             var g = byType[type] || (byType[type] = {type: Number(type), title: typeInfo(type, el.element_type_desc).many, items: [], counts: {}});
-            g.items.push({id: id, el: el, number: Number(number), name: componentName(type, number, el.element_type_desc),
-                          status: st, reading: reading(el, unit), flags: flags(el)});
+            // sorted by the physical slot or port when the server knows it (an HBA lists its ports in element order, not port order)
+            g.items.push({id: id, el: el, number: (bay && bay.slot !== null && bay.slot !== undefined) ? Number(bay.slot) : Number(number), name: bay ? bay.label : componentName(type, number, el.element_type_desc),
+                          status: st, reading: reading(el, unit), flags: flags(el), drive: driveInfo(bay, unit), linked: bay ? bay.linked_to : null});
             g.counts[st.bucket] = (g.counts[st.bucket] || 0) + 1;
             total[st.bucket] = (total[st.bucket] || 0) + 1;
         });
         var groups = Object.keys(byType).map(function (k) { return byType[k]; });
         groups.forEach(function (g) { g.items.sort(function (a, b) { return a.number - b.number; }); });
         groups.sort(function (a, b) { return typeInfo(a.type).order - typeInfo(b.type).order || a.type - b.type; });
-        return {groups: groups, hidden: hidden, counts: total};
+        var hasDrives = groups.some(function (g) { return g.items.some(function (i) { return !!i.drive; }); });
+        return {groups: groups, hidden: hidden, counts: total, hasDrives: hasDrives};
     }
 
     /** "8 Warning | 60 OK | 21 Not installed" as [{bucket, n, label, cls}] in severity order. */
@@ -149,14 +189,16 @@
     }
 
     /** One change of an alert (before/after), described for people. */
-    function describeChange(change, unit) {
+    function describeChange(change, unit, ctx) {
         var before = change.before || null, after = change.after || null;
         var type = change.element_type, number = change.element_type_number;
         var b = before ? reading(before, unit) : '', a = after ? reading(after, unit) : '';
+        var bay = ((ctx && ctx.bays) || {})[change.id] || null;
         return {
-            name: componentName(type, number, change.element_type_desc),
+            name: bay ? bay.label : componentName(type, number, change.element_type_desc),
+            drive: driveInfo(bay, unit),
             before: before ? statusInfo(before.status, before.status_desc, type) : null,
-            after: after ? statusInfo(after.status, after.status_desc, type) : null,
+            after: after ? (function (st) { var h = bayHint(bay, st); return h ? {label: st.label, cls: st.cls, bucket: st.bucket, tip: st.tip + h} : st; })(statusInfo(after.status, after.status_desc, type)) : null,
             reading: b && a && b !== a ? b + ' → ' + a : (a || b),
             flags: after ? flags(after) : [],
             flagsBefore: before ? flags(before) : []
@@ -164,6 +206,6 @@
     }
 
     var api = {typeInfo: typeInfo, statusInfo: statusInfo, temperature: temperature, reading: reading, flags: flags, componentName: componentName,
-               isHiddenOverall: isHiddenOverall, group: group, summarize: summarize, describeChange: describeChange};
+               isNotReported: isNotReported, driveInfo: driveInfo, group: group, summarize: summarize, describeChange: describeChange};
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; } else { root.SesextFriendly = api; }
 })(typeof window !== 'undefined' ? window : this);

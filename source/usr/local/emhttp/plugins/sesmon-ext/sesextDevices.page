@@ -22,6 +22,7 @@ Markdown="false"
  * included in all copies or substantial portions of the Software.
  *
  */
+$sesext_dl_installed = file_exists('/usr/local/emhttp/plugins/unraid-disklocation-next/DiskLocationNext.page');
 ?>
 <style>
     .sesext-status-ok { color: green; }
@@ -91,12 +92,29 @@ Markdown="false"
     .sesext-group-row .sesext-status-summary { float: none; margin-left: 14px; font-weight: normal; }
     .sesext-chip { border: 1px solid; border-radius: 9px; padding: 0 7px; margin-right: 4px; color: red; white-space: nowrap; }
     .sesext-note { margin: 8px 0; opacity: .75; }
+    .sesext-tag { border: 1px solid; border-radius: 9px; padding: 0 7px; margin-right: 4px; white-space: nowrap; opacity: .85; }
+    .sesext-drive-head { font-weight: bold; }
+    .sesext-drive-line { white-space: nowrap; }
+    .sesext-drive-line + .sesext-drive-line { margin-top: 1px; }
+    .sesext-callout { margin: 0 0 12px 0; padding: 6px 12px; border: 1px solid rgba(128,128,128,.5); border-radius: 4px; background: rgba(128,128,128,.10); }
+    .sesext-callout i { margin-right: 8px; opacity: .7; }
+    .sesext-callout-close { float: right; cursor: pointer; opacity: .6; font-size: 1.3em; line-height: 1; }
 </style>
 
 <div class="sesext-viewbar">
     View: <a data-view="friendly">Friendly</a><a data-view="raw">Raw</a>
     <span id="sesext-unitbar" style="margin-left:16px;">Temperature: <a data-unit="C">&deg;C</a><a data-unit="F">&deg;F</a></span>
     <span id="sesext-viewhint" class="sesext-note" style="margin-left:10px;"></span>
+</div>
+
+<div id="sesext-callout" class="sesext-callout" style="display:none;">
+    <a class="sesext-callout-close" title="Hide this">&times;</a>
+    <i class="fa fa-th-large"></i>
+<?if ($sesext_dl_installed):?>
+    Want to see where each of these drives physically sits? <a href="/Tools/DiskLocationNext">Open Disk Location Next</a> for the tray map.
+<?else:?>
+    Want a picture of where each drive physically sits? <a href="https://github.com/joshmans/unraid-disklocation-next" target="_blank" rel="noopener">Disk Location Next</a> maps your drives to their trays and bays (a separate plugin).
+<?endif;?>
 </div>
 
 <div id="sesext-content"></div>
@@ -127,13 +145,32 @@ try {
     function sesext_friendlySummary(counts) {
         return SesextFriendly.summarize(counts).map(function (x) { return '<span class="' + x.cls + '">' + x.n + ' ' + sesext_esc(x.label) + '</span>'; });
     }
-    // the elements, grouped by kind, with names, status words, readings and notes
+    // the drive(s) in a bay: the physical drive once for a dual-disk bay, then each disk (linked to its Unraid page)
+    function sesext_driveCell(d) {
+        if (!d) { return ''; }
+        var h = '';
+        if (d.head) { h += '<div class="sesext-drive-head">' + sesext_esc(d.head) + '</div>'; }
+        d.lines.forEach(function (l) {
+            h += '<div class="sesext-drive-line" title="' + sesext_esc(l.tip) + '">' +
+                 (l.url ? '<a href="' + sesext_esc(l.url) + '">' + sesext_esc(l.name) + '</a>' : '<strong>' + sesext_esc(l.name) + '</strong>') +
+                 (l.text ? ' \u00b7 ' + sesext_esc(l.text) : '') + '</div>';
+        });
+        if (d.lastKnown) { h += '<div class="sesext-note">last known: this drive is no longer seen by the server</div>'; }
+        return h;
+    }
+    function sesext_hbaText(bayInfo) {
+        var h = bayInfo && bayInfo.hba;
+        return h ? 'HBA ' + sesext_esc(h.name) + ', firmware ' + sesext_esc(h.firmware) + ' - ' : '';
+    }
+    // the elements, grouped by kind, with names, status words, drives, readings and notes
     function sesext_friendlyTable(fr) {
-        var h = '<table class="sesext-elements-table tablesorter"><thead><tr><th>Component</th><th>Status</th><th>Reading</th><th>Notes</th></tr></thead><tbody>';
+        var cols = fr.hasDrives ? 5 : 4;
+        var h = '<table class="sesext-elements-table tablesorter"><thead><tr><th>Component</th><th>Status</th>' + (fr.hasDrives ? '<th>Drive</th>' : '') + '<th>Reading</th><th>Notes</th></tr></thead><tbody>';
         fr.groups.forEach(function (g) {
-            h += '<tr class="sesext-group-row"><td colspan="4">' + sesext_esc(g.title) + '<span class="sesext-status-summary">' + sesext_friendlySummary(g.counts).join(' | ') + '</span></td></tr>';
+            h += '<tr class="sesext-group-row"><td colspan="' + cols + '">' + sesext_esc(g.title) + '<span class="sesext-status-summary">' + sesext_friendlySummary(g.counts).join(' | ') + '</span></td></tr>';
             g.items.forEach(function (i) {
-                h += '<tr><td title="Element ' + sesext_esc(i.id) + '">' + sesext_esc(i.name) + '</td><td>' + sesext_pill(i.status) + '</td><td>' + sesext_esc(i.reading) + '</td><td>' + sesext_chips(i.flags) + '</td></tr>';
+                var notes = sesext_chips(i.flags) + (i.linked ? '<span class="sesext-tag" title="What is at the far end of this port\'s cable">cabled to ' + sesext_esc(i.linked) + '</span>' : '');
+                h += '<tr><td title="Element ' + sesext_esc(i.id) + '">' + sesext_esc(i.name) + '</td><td>' + sesext_pill(i.status) + '</td>' + (fr.hasDrives ? '<td>' + sesext_driveCell(i.drive) + '</td>' : '') + '<td>' + sesext_esc(i.reading) + '</td><td>' + notes + '</td></tr>';
             });
         });
         h += '</tbody></table>';
@@ -143,17 +180,19 @@ try {
         return h;
     }
     // one alert (the changes sesmon detected), before and after in words
-    function sesext_friendlyAlert(alertData) {
+    function sesext_friendlyAlert(alertData, ctx) {
+        var described = [];
+        $.each(alertData.changes, function (i, change) { if (change) { described.push({change: change, d: SesextFriendly.describeChange(change, sesext_unit, ctx)}); } });
+        var withDrives = described.some(function (x) { return !!x.d.drive; });
         var h = '<table class="sesext-alert-file-table tablesorter"><thead>';
-        h += '<tr class="sesext-alert-file-header"><th colspan="5"><strong>Change Detected:</strong> ' + sesext_esc(sesext_formatDate(sesext_safe(alertData.detected_at))) + ' ' + sesext_getTimeAgo(alertData.detected_at, false) + '</th></tr>';
-        h += '<tr><th>Component</th><th>Before</th><th>After</th><th>Reading</th><th>Notes</th></tr></thead><tbody>';
-        $.each(alertData.changes, function (i, change) {
-            if (!change) return;
-            var d = SesextFriendly.describeChange(change, sesext_unit);
+        h += '<tr class="sesext-alert-file-header"><th colspan="' + (withDrives ? 6 : 5) + '"><strong>Change Detected:</strong> ' + sesext_esc(sesext_formatDate(sesext_safe(alertData.detected_at))) + ' ' + sesext_getTimeAgo(alertData.detected_at, false) + '</th></tr>';
+        h += '<tr><th>Component</th><th>Before</th><th>After</th>' + (withDrives ? '<th>Drive</th>' : '') + '<th>Reading</th><th>Notes</th></tr></thead><tbody>';
+        $.each(described, function (i, x) {
+            var change = x.change, d = x.d;
             var notes = sesext_chips(d.flags);
             if (d.flagsBefore.length) { notes += ' <span class="sesext-note">(before: ' + sesext_esc(d.flagsBefore.map(function (f) { return f.label; }).join(', ')) + ')</span>'; }
             h += '<tr class="alert-change-row"><td title="Element ' + sesext_esc(change.id) + '">' + sesext_esc(d.name) + '</td><td>' + (d.before ? sesext_pill(d.before) : '<span class="sesext-note">new</span>') +
-                 '</td><td>' + (d.after ? sesext_pill(d.after) : '<span class="sesext-note">gone</span>') + '</td><td>' + sesext_esc(d.reading) + '</td><td>' + notes + '</td></tr>';
+                 '</td><td>' + (d.after ? sesext_pill(d.after) : '<span class="sesext-note">gone</span>') + '</td>' + (withDrives ? '<td>' + sesext_driveCell(d.drive) + '</td>' : '') + '<td>' + sesext_esc(d.reading) + '</td><td>' + notes + '</td></tr>';
         });
         return h + '</tbody></table>';
     }
@@ -238,7 +277,8 @@ try {
         }
     }
 
-    function sesext_buildDevice(folderName, data, alertDataArray, targetContainer) {
+    function sesext_buildDevice(folderName, data, alertDataArray, targetContainer, bayInfo) {
+        var ctx = bayInfo ? {bays: bayInfo.bays} : null; // the bays named by their drives (see include/sesext_bays.php)
         var html = '';
 
         data = data || {};
@@ -293,7 +333,7 @@ try {
         if (statusCounts[1] > 0) deviceSummary.push('<span class="sesext-status-ok">' + statusCounts[1] + ' OK</span>');
         if (statusCounts.other > 0) deviceSummary.push('<span class="sesext-status-other">' + statusCounts.other + ' Other</span>');
 
-        var fr = sesext_view === 'friendly' ? SesextFriendly.group(data.raw, sesext_unit) : null;
+        var fr = sesext_view === 'friendly' ? SesextFriendly.group(data.raw, sesext_unit, ctx) : null;
         if (fr) {
             deviceSummary = [];
             if (totalAlerts > 0) deviceSummary.push('<span class="sesext-alert-count">' + totalAlerts + ' Alert' + (totalAlerts > 1 ? 's' : '') + '</span>');
@@ -313,6 +353,7 @@ try {
         html += '<i class="fa fa-chevron-right" id="'+ deviceContentId +'-chevron"></i> ';
         html += (sesext_safe(data.device.description) || folderName) + ' ';
         html += '(' + sesext_safe(data.device.path) + ':' + sesext_safe(data.device.address) + ') - ';
+        html += sesext_hbaText(bayInfo);
         html += 'Updated: ' + sesext_formatDate(sesext_safe(data.captured_at)) + ' ' + sesext_getTimeAgo(data.captured_at, true) + alertTimeHtml;
         html += '<span class="sesext-status-summary">' + deviceSummary.join(' | ') + '</span>';
         html += '</div>';
@@ -336,7 +377,7 @@ try {
             // Alerts section tables (one per alert)
             $.each(alertDataArray, function(idx, alertData) {
                 if (!alertData || !Array.isArray(alertData.changes)) return;
-                if (fr) { html += sesext_friendlyAlert(alertData); return; }
+                if (fr) { html += sesext_friendlyAlert(alertData, ctx); return; }
 
                 // Alert table header
                 html += '<table class="sesext-alert-file-table tablesorter"><thead>';
@@ -470,6 +511,15 @@ try {
             return;
         }
 
+        // which drive is in which bay (optional: without it the page shows what it always did)
+        let bayData = {};
+        try {
+            const bayRes = await fetch(`/plugins/sesmon-ext/include/sesext_bays_json.php${cacheBust}`);
+            if (bayRes.ok) { const j = await bayRes.json(); bayData = (j && !Array.isArray(j)) ? j : {}; }
+        } catch (e) {
+            console.warn('Failed to load the bay map:', e);
+        }
+
         const devicePromises = folderArray.map(async ({ folderName, folderData }) => {
             // Device data
             let deviceRes;
@@ -507,7 +557,7 @@ try {
                 alertDataArray = alertResults.filter(a => a !== null);
             }
 
-            return { folderName, data, alertDataArray };
+            return { folderName, data, alertDataArray, bayInfo: bayData[folderName] || null };
         });
 
         const results = (await Promise.all(devicePromises)).filter(r => r);
@@ -536,8 +586,12 @@ try {
         });
 
         sesext_last.forEach(result => {
-            sesext_buildDevice(result.folderName, result.data, result.alertDataArray, newContent);
+            sesext_buildDevice(result.folderName, result.data, result.alertDataArray, newContent, result.bayInfo);
         });
+        // the pointer to Disk Location Next is worth showing next to a table that names drives (until it is dismissed)
+        var namesDrives = sesext_last.some(function (r) { return r.bayInfo && Object.keys(r.bayInfo.bays).some(function (k) { return r.bayInfo.bays[k].drives.length > 0; }); });
+        var dismissed = false; try { dismissed = localStorage.getItem('sesext_dl_dismissed') === '1'; } catch (e) {}
+        $('#sesext-callout').toggle(sesext_view === 'friendly' && namesDrives && !dismissed);
 
         $('#sesext-content').html(newContent.html());
 
@@ -575,6 +629,7 @@ try {
     $(document).ready(function() {
         $('.sesext-viewbar a[data-unit]').removeClass('active').filter('[data-unit="' + sesext_unit + '"]').addClass('active');
         sesext_setView(sesext_view);
+        $(document).on('click', '.sesext-callout-close', function() { try { localStorage.setItem('sesext_dl_dismissed', '1'); } catch (e) {} $('#sesext-callout').hide(); });
         $(document).on('click', '.sesext-viewbar a[data-view]', function() { sesext_setView($(this).data('view')); });
         $(document).on('click', '.sesext-viewbar a[data-unit]', function() { sesext_setUnit($(this).data('unit')); });
         sesext_loadData();

@@ -170,7 +170,7 @@ try {
             var all = $.extend({}, S.defaults.config, S.defaults.notifier);
             Object.keys(all).forEach(function (k) { pre[k] = presetFor(k, all[k]); });
             rows.push({orig: null, kind: 'device', address: e.use[0] === 'address' ? e.use[1] : '', device: e.use[0] === 'device' ? e.use[1] : '',
-                description: e.label, enabled: false, config: $.extend({}, S.defaults.config), notifier: {mode: 'unraid', script: S.notify_script, config: $.extend({}, S.defaults.notifier)},
+                description: e.kind === 'hba' ? 'Internal HBA ports' : e.label, enabled: false, config: $.extend({}, S.defaults.config), notifier: {mode: 'unraid', script: S.notify_script, config: $.extend({}, S.defaults.notifier)},
                 pre: pre, status: {level: 'off', code: 'available', message: 'Not monitored', resolved: e.dev}, removed: false, open: false, fresh: e});
         });
     }
@@ -236,10 +236,16 @@ try {
         }
         return h;
     }
+    // an HBA's virtual enclosure is not a chassis: say what it is and what monitoring it gives
+    function hbaNote(r) {
+        var e = r.fresh || encl(r.status.resolved);
+        return e && e.note ? '<div class="sx-sub">' + esc(e.note) + '</div>' : '';
+    }
     function subLine(r) {
         var e = r.fresh || encl(r.status.resolved);
         var parts = [];
         if (e) { parts.push(e.label); }
+        if (e && e.hba) { parts.push('HBA ' + e.hba.name + ', firmware ' + e.hba.firmware); }
         if (r.status.resolved && r.kind !== 'file') { parts.push(r.status.resolved); }
         if (r.address) { parts.push(r.address); } else if (r.device && r.kind === 'file') { parts.push(r.device); } else if (r.device && !(e && parts.indexOf(r.device) >= 0)) { parts.push(r.device); }
         if (r.kind === 'file') { parts.unshift('JSON test file'); }
@@ -265,7 +271,7 @@ try {
             shown++;
             var alt = shown % 2 === 0 ? ' sx-alt' : ''; // stripe per device: an opened settings panel shares its row's shade
             h += '<tr class="sx-row' + alt + '" data-i="' + i + '"><td><input type="checkbox" class="sx-enabled" data-i="' + i + '"' + (r.enabled ? ' checked' : '') + '></td>' +
-                '<td><input type="text" class="sx-desc" data-i="' + i + '" value="' + esc(r.description) + '" placeholder="Description"><div class="sx-sub">' + esc(subLine(r)) + '</div></td>' +
+                '<td><input type="text" class="sx-desc" data-i="' + i + '" value="' + esc(r.description) + '" placeholder="Description"><div class="sx-sub">' + esc(subLine(r)) + '</div>' + hbaNote(r) + '</td>' +
                 '<td>' + statusCell(i) + '</td><td>' + notifierCell(i) + '</td>' +
                 '<td>' + (r.kind === 'file' ? '' : '<a class="sx-link sx-more" data-i="' + i + '">' + (r.open ? 'Hide settings' : 'Settings') + '</a>') +
                 (r.orig !== null ? '<a class="sx-link sx-del" data-i="' + i + '">Remove</a>' : '') + '</td></tr>';

@@ -5,6 +5,7 @@ $plugin = dirname(__DIR__, 2) . '/source/usr/local/emhttp/plugins/sesmon-ext';
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 if ($path === '/plugins/sesmon-ext/include/sesext_api.php') { require "$plugin/include/sesext_api.php"; return true; }
+if ($path === '/plugins/sesmon-ext/include/sesext_bays_json.php') { require "$plugin/include/sesext_bays_json.php"; return true; }
 if ($path === '/plugins/sesmon-ext/include/sesext_list.php') { require "$plugin/include/sesext_list.php"; return true; }
 if (strpos($path, '/plugins/sesmon-ext/json/') === 0) { // the daemon's output folders
     $f = realpath(getenv('SESEXT_ROOT') . '/var/lib/sesmon-ext/' . substr($path, strlen('/plugins/sesmon-ext/json/')));

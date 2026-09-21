@@ -10,6 +10,7 @@ function eq(actual, expected, name) {
     try { assert.deepStrictEqual(actual, expected); pass++; }
     catch (e) { fail++; console.log('  FAIL: ' + name + '\n    expected: ' + JSON.stringify(expected) + '\n    actual:   ' + JSON.stringify(actual)); }
 }
+function ok(cond, name) { eq(!!cond, true, name); }
 
 // ---- names
 eq(F.componentName(1, 10, 'Device slot'), 'Drive bay 10', 'name: drive bay');
@@ -59,7 +60,7 @@ eq(F.reading({amperage: '3.43'}, 'F'), '3.43 A', 'unit: current is unaffected');
 
 // ---- the real enclosure
 const g = F.group(snap.raw);
-eq(g.hidden, 15, 'real data: the unsupported overall entries of all 15 types are hidden');
+eq(g.hidden, 15, 'real data: the 15 elements the shelf reports no status for (the overall entries) are hidden');
 eq(g.groups.map(x => x.title), ['Drive bays', 'Power supplies', 'Cooling', 'Temperatures', 'Voltages', 'Currents', 'SAS connectors', 'Enclosure controllers', 'Enclosure', 'Displays', 'Vendor specific [0x83]', 'Vendor specific [0x85]', 'Vendor specific [0x8c]', 'Vendor specific [0x8d]', 'Vendor specific [0x8e]'], 'real data: groups in reading order, vendor specific last');
 const bays = g.groups[0];
 eq(bays.items.length, 24, 'real data: 24 drive bays (overall entry hidden)');
@@ -87,14 +88,78 @@ eq(gF.groups.find(x => x.title === 'Temperatures').items[5].reading, '117 °F', 
 eq(gF.groups.find(x => x.title === 'Voltages').items[1].reading, '12.18 V', 'real data in Fahrenheit: voltages unchanged');
 eq(gF.counts, g.counts, 'the unit does not change any counts');
 
+
+// ---- bays named by their drives (bays.json is what include/sesext_bays_json.php returns for catan)
+const bayData = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/catan/bays.json'), 'utf8'));
+const shelf = bayData['netapp-ds424iom12a'], hba = bayData['internal-hba-ports'];
+const gb = F.group(snap.raw, 'C', {bays: shelf.bays});
+const bayGroup = gb.groups[0];
+eq(gb.hasDrives, true, 'bays: the table has a Drive column');
+eq(bayGroup.items[0].name, 'Drive bay 0', 'bays: named by the bay label'); eq(bayGroup.items[10].name, 'Drive bay 10', 'bays: bay 10');
+const b2 = bayGroup.items[2].drive;
+eq([b2.multi, b2.head, b2.lines.length, b2.lines[0].name, b2.lines[0].url], [false, '', 1, 'disk1', '/Main/Device?name=disk1'], 'bays: a single drive is one line linking to its Unraid page');
+ok(/^HGST HUH728080AL4200 · 8 TB · \d+ °C$/.test(b2.lines[0].text), 'bays: model, size and temperature: ' + b2.lines[0].text);
+eq(bayGroup.items[0].drive.lines[0].name, 'parity', 'bays: bay 0 holds parity');
+const b10 = bayGroup.items[10].drive;
+eq([b10.multi, b10.head, b10.lines.map(l => l.name)], [true, 'SEAGATE ST14000NM0001 · 14 TB (2 disks)', ['disk22', 'disk23']], 'bays: a dual-disk bay names the physical drive once and each disk under it');
+ok(/^7 TB · \d+ °C$/.test(b10.lines[0].text), 'bays: each disk shows its half of the capacity and its temperature: ' + b10.lines[0].text);
+ok(b10.lines[0].tip.indexOf('/dev/sdr') === 0, 'bays: the tooltip has the device and Unraid\'s identity');
+eq(bayGroup.items[18].drive, null, 'bays: an empty bay has no drive'); eq(bayGroup.items[18].status.label, 'Empty', 'bays: ...and reads Empty');
+const hinted = bayGroup.items.filter(i => i.status.tip.indexOf('shows up as 2 disks') >= 0).map(i => i.number);
+eq(hinted, [10, 11, 12, 13, 14, 15, 16, 17], 'hint: exactly the eight dual-disk Warning bays explain themselves');
+ok(bayGroup.items[10].status.tip.indexOf('does not say why') >= 0 && bayGroup.items[10].status.label === 'Warning', 'hint: it is a hint, not a diagnosis, and the status stays Warning');
+eq(bayGroup.items[2].status.tip.indexOf('shows up as'), -1, 'hint: an ordinary bay gets none');
+eq(gb.counts, g.counts, 'bays: naming the bays changes no counts');
+const gbF = F.group(snap.raw, 'F', {bays: shelf.bays});
+ok(/ · \d+ °F$/.test(gbF.groups[0].items[2].drive.lines[0].text) && /°F/.test(gbF.groups[0].items[10].drive.lines[0].text), 'bays: drive temperatures follow the unit toggle');
+const standby = JSON.parse(JSON.stringify(shelf.bays)); standby['1#2'].drives[0].standby = true; standby['1#2'].drives[0].temp_c = null;
+eq(F.group(snap.raw, 'C', {bays: standby}).groups[0].items[2].drive.lines[0].text.endsWith('standby'), true, 'bays: a spun down disk reads "standby" (no temperature is read to find out)');
+const nt = JSON.parse(JSON.stringify(shelf.bays)); nt['1#2'].drives[0].temp_c = null;
+ok(!/°/.test(F.group(snap.raw, 'C', {bays: nt}).groups[0].items[2].drive.lines[0].text), 'bays: no temperature known, none shown');
+const lk = JSON.parse(JSON.stringify(shelf.bays)); lk['1#2'].last_known = 12345;
+eq(F.group(snap.raw, 'C', {bays: lk}).groups[0].items[2].drive.lastKnown, 12345, 'bays: a last-known drive is marked');
+eq(F.group(snap.raw, 'C').groups[0].items[2].name, 'Drive bay 2', 'bays: without bay data the bays are named as before');
+eq(F.group(snap.raw, 'C').hasDrives, false, 'bays: ...and there is no Drive column');
+const un = JSON.parse(JSON.stringify(shelf.bays)); un['1#2'].drives[0].role = 'unassigned';
+ok(F.group(snap.raw, 'C', {bays: un}).groups[0].items[2].drive.lines[0].text.endsWith('not in the array or a pool'), 'bays: a drive outside the array says so');
+
+// ---- the HBA's virtual enclosure
+const vsnap = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/catan/parsed-virtualses.json'), 'utf8'));
+const gv = F.group(vsnap.raw, 'C', {bays: hba.bays});
+eq(gv.groups.map(x => x.title), ['HBA ports', 'SAS connectors'], 'hba: HBA ports first, then the connectors');
+eq(gv.hidden, Object.values(vsnap.raw).filter(e => e.status === 0).length, 'hba: every element the HBA reports no status for is hidden');
+ok(gv.hidden >= 32, 'hba: that includes the 32 unused slots');
+eq(gv.groups[0].items.length, 16, 'hba: the 16 real ports');
+eq(gv.groups[0].items.map(i => i.name).slice(0, 4), ['Port 0', 'Port 1', 'Port 2', 'Port 3'], 'hba: listed by port number, not by the order the HBA reports them in');
+eq(gv.groups[0].items.map(i => i.number), Array.from({length: 16}, (_, i) => i), 'hba: ports 0 to 15 in order');
+const port12 = gv.groups[0].items.find(i => i.name === 'Port 12');
+eq([!!port12, port12.drive.lines[0].name, port12.drive.lines[0].url], [true, 'sdb', null], 'hba: port 12 holds sdb, which Unraid does not manage: no page to link to');
+ok(port12.drive.lines[0].text.startsWith('SPCC Solid State · 1 TB') && port12.drive.lines[0].text.endsWith('not in the array or a pool'), 'hba: model, size and where it stands: ' + port12.drive.lines[0].text);
+eq(gv.groups[0].items.filter(i => i.drive).length, 7, 'hba: seven ports hold a drive');
+eq(gv.groups[0].items.filter(i => i.linked).map(i => i.name + '>' + i.linked), ['Port 4>NETAPP DS424IOM12A', 'Port 5>NETAPP DS424IOM12A', 'Port 6>NETAPP DS424IOM12A', 'Port 7>NETAPP DS424IOM12A'], 'hba: ports 4 to 7 are cabled to the NetApp');
+eq(gv.groups[0].items.find(i => i.name === 'Port 8').status.label, 'No drive', 'hba: a port without a drive reads No drive');
+eq(F.statusInfo(5, 'Not installed', 23).label, 'No drive', 'hba: status wording for the port type');
+eq(F.typeInfo(23).many, 'HBA ports', 'hba: type 23 is named');
+
+// ---- alerts name the drives too
+const chg = F.describeChange({id: '1#10', element_type: 1, element_type_number: 10, element_type_desc: 'Device slot',
+    before: {status: 3, status_desc: 'Noncritical'}, after: {status: 2, status_desc: 'Critical'}}, 'C', {bays: shelf.bays});
+eq([chg.name, chg.drive.lines.map(l => l.name)], ['Drive bay 10', ['disk22', 'disk23']], 'alert: the change names its bay and disks');
+eq(chg.after.label, 'Critical', 'alert: a change to Critical carries no warning hint');
+const chgW = F.describeChange({id: '1#10', element_type: 1, element_type_number: 10, element_type_desc: 'Device slot',
+    before: {status: 1, status_desc: 'OK'}, after: {status: 3, status_desc: 'Noncritical'}}, 'C', {bays: shelf.bays});
+ok(chgW.after.tip.indexOf('shows up as 2 disks') >= 0, 'alert: a change to Warning in a dual-disk bay explains itself');
+eq(F.describeChange({id: '3#2', element_type: 3, element_type_number: 2, element_type_desc: 'Cooling', after: {status: 1, status_desc: 'OK'}}, 'C', {bays: shelf.bays}).drive, null, 'alert: a fan has no drive');
+
 // ---- robustness
-eq(F.group({}), {groups: [], hidden: 0, counts: {}}, 'empty input');
-eq(F.group(null), {groups: [], hidden: 0, counts: {}}, 'null input');
+eq(F.group({}), {groups: [], hidden: 0, counts: {}, hasDrives: false}, 'empty input');
+eq(F.group(null), {groups: [], hidden: 0, counts: {}, hasDrives: false}, 'null input');
 eq(F.group({'1#0': null, '1#1': {element_type: 1, element_type_number: 1}}).groups, [], 'entries without a status are skipped');
 const odd = F.group({'77#2': {element_type: 77, element_type_number: 2, element_type_desc: 'Mystery', status: 1, status_desc: 'OK'}});
 eq(odd.groups[0].title, 'Mystery', 'unknown type: group named after the daemon\'s description');
 eq(odd.groups[0].items[0].name, 'Mystery 2', 'unknown type: item name');
 eq(F.group({'1#-1': {element_type: 1, element_type_number: -1, status: 2, status_desc: 'Critical'}}).hidden, 0, 'an overall entry that reports a real status is shown, not hidden');
+eq(F.group({'23#20': {element_type: 23, element_type_number: 20, status: 0, status_desc: 'Unsupported'}}).hidden, 1, 'an unused slot (not reported) is hidden even when it is not an overall entry');
 
 // ---- alert changes
 const ch = F.describeChange({id: '3#2', element_type: 3, element_type_number: 2, element_type_desc: 'Cooling',
