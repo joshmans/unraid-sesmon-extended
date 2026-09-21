@@ -35,18 +35,37 @@ function sesext_test_done() {
     exit($GLOBALS['sesext_fail'] ? 1 : 0);
 }
 
-/** Build a temporary fake root with /sys/class/scsi_generic from "sgN|attr|value" lines. Returns its path. */
-function sesext_fixture_root($lines) {
-    $root = sys_get_temp_dir() . '/sesext-test-' . getmypid() . '-' . mt_rand();
+/**
+ * Build a temporary fake root. Lines are "sgN|attr|value" (a file below /sys/class/scsi_generic/sgN/device; attr may be a
+ * nested path such as block/sdb/size) or "@/absolute/path|value" (a file anywhere below the root). Returns its path.
+ */
+function sesext_fixture_root($lines, $fixed = null) {
+    $root = $fixed ?? sys_get_temp_dir() . '/sesext-test-' . getmypid() . '-' . mt_rand();
     foreach (is_array($lines) ? $lines : explode("\n", $lines) as $l) {
         $l = rtrim($l, "\r\n");
         if ($l === '') { continue; }
-        [$sg, $attr, $val] = explode('|', $l, 3);
-        $dir = "$root/sys/class/scsi_generic/$sg/device";
-        if (!is_dir($dir)) { mkdir($dir, 0777, true); }
-        file_put_contents("$dir/$attr", $val . "\n");
+        if ($l[0] === '@') {
+            [$path, $val] = explode('|', substr($l, 1), 2);
+            $file = $root . $path;
+        } else {
+            [$sg, $attr, $val] = explode('|', $l, 3);
+            $file = "$root/sys/class/scsi_generic/$sg/device/$attr";
+        }
+        if (!is_dir(dirname($file))) { mkdir(dirname($file), 0777, true); }
+        file_put_contents($file, $val . "\n");
     }
-    register_shutdown_function(function () use ($root) { exec('rm -rf ' . escapeshellarg($root)); });
+    if ($fixed === null) { register_shutdown_function(function () use ($root) { exec('rm -rf ' . escapeshellarg($root)); }); }
     return $root;
 }
-function sesext_catan_lines() { return file(SESEXT_FIXTURES . '/catan/sysfs.txt', FILE_IGNORE_NEW_LINES); }
+/** The catan sysfs data: what the enclosure discovery reads (sysfs.txt) plus drives, hctl and the HBA (sysfs-extra.txt). */
+function sesext_catan_lines($extra = true) {
+    $l = file(SESEXT_FIXTURES . '/catan/sysfs.txt', FILE_IGNORE_NEW_LINES);
+    return $extra ? array_merge($l, file(SESEXT_FIXTURES . '/catan/sysfs-extra.txt', FILE_IGNORE_NEW_LINES)) : $l;
+}
+/** A fake catan with Unraid's state file in place. */
+function sesext_catan_root() {
+    $root = sesext_fixture_root(sesext_catan_lines());
+    mkdir("$root/var/local/emhttp", 0777, true);
+    copy(SESEXT_FIXTURES . '/catan/disks.ini', "$root/var/local/emhttp/disks.ini");
+    return $root;
+}

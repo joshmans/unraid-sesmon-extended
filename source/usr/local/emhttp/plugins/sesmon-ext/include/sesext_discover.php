@@ -24,9 +24,16 @@ function sesext_sysfs_read($file) {
     return $v === false ? null : trim($v);
 }
 
+/** Read a small sysfs attribute that may hold trailing NUL bytes (the mpt3sas board attributes do). */
+function sesext_sysfs_text($file) {
+    $v = @file_get_contents($file);
+    return $v === false ? '' : trim(explode("\0", $v)[0]);
+}
+
 /**
- * Every SCSI generic node the kernel knows: ['/dev/sg8' => [dev, type, address, vendor, model, rev]].
- * address is lower case (as the daemon lowercases it) or null when the device has none.
+ * Every SCSI generic node the kernel knows: ['/dev/sg8' => [dev, type, address, vendor, model, rev, hctl, block,
+ * bytes, ssd]]. address is lower case (as the daemon lowercases it) or null when the device has none; hctl is
+ * "host:channel:target:lun", block the disk's name ("sdb") and bytes its capacity, for nodes that are disks.
  */
 function sesext_scan_nodes($root = null) {
     $root = $root ?? sesext_root();
@@ -35,7 +42,16 @@ function sesext_scan_nodes($root = null) {
         $sg = basename(dirname($d));
         $addr = sesext_sysfs_read("$d/sas_address");
         $type = sesext_sysfs_read("$d/type");
+        $link = @readlink($d); // the real sysfs entry links to .../<host:channel:target:lun>; fixtures hold a file
+        $hctl = $link !== false ? basename($link) : (sesext_sysfs_read("$d/hctl") ?? '');
+        $blk = glob("$d/block/*") ?: [];
+        $block = $blk ? basename($blk[0]) : '';
+        $sectors = $block !== '' ? sesext_sysfs_read("$d/block/$block/size") : null;
+        $rot = $block !== '' ? sesext_sysfs_read("$d/block/$block/queue/rotational") : null;
         $nodes["/dev/$sg"] = [
+            'hctl'    => $hctl, 'block' => $block,
+            'bytes'   => ($sectors !== null && ctype_digit($sectors)) ? (int)$sectors * 512 : null,
+            'ssd'     => $rot === '0',
             'dev'     => "/dev/$sg",
             'type'    => $type === null ? null : (int)$type,
             'address' => ($addr === null || $addr === '') ? null : strtolower($addr),
@@ -48,6 +64,26 @@ function sesext_scan_nodes($root = null) {
     return $nodes;
 }
 
+/** An enclosure that is really an HBA's own virtual SES (it lists the HBA's ports, not a chassis). */
+function sesext_enclosure_kind($vendor, $model) {
+    return preg_match('/virtual\s*ses/i', $model) ? 'hba' : 'shelf';
+}
+
+/**
+ * The HBA (SCSI host) behind a device, from sysfs: ['driver', 'name', 'chip', 'firmware', 'bios'], or null when the
+ * host is no HBA that reports a firmware version (an AHCI port, a USB stick).
+ */
+function sesext_hba_info($hctl, $root = null) {
+    $root = $root ?? sesext_root();
+    if (!preg_match('/^(\d+):/', (string)$hctl, $m)) { return null; }
+    $h = "$root/sys/class/scsi_host/host{$m[1]}";
+    $fw = sesext_sysfs_text("$h/version_fw");
+    if ($fw === '') { return null; }
+    $chip = sesext_sysfs_text("$h/version_product");
+    return ['driver' => sesext_sysfs_text("$h/proc_name"), 'name' => sesext_sysfs_text("$h/board_name") ?: $chip, 'chip' => $chip,
+            'firmware' => $fw, 'bios' => sesext_sysfs_text("$h/version_bios")];
+}
+
 /**
  * The discovery result:
  *   nodes       every sg node (see above)
@@ -57,6 +93,7 @@ function sesext_scan_nodes($root = null) {
  *   duplicates  the addresses that more than one node reports (the daemon ignores these for lookups)
  */
 function sesext_discover($root = null) {
+    $root = $root ?? sesext_root();
     $nodes = sesext_scan_nodes($root);
     $by = [];
     foreach ($nodes as $n) {
@@ -68,10 +105,14 @@ function sesext_discover($root = null) {
     foreach ($nodes as $n) {
         if ($n['type'] !== SESEXT_SCSI_TYPE_ENCLOSURE) { continue; }
         $unique = $n['address'] !== null && !isset($dups[$n['address']]);
+        $kind = sesext_enclosure_kind($n['vendor'], $n['model']);
         $enclosures[] = $n + [
             'label'  => trim(preg_replace('/\s+/', ' ', $n['vendor'] . ' ' . $n['model'])) ?: 'Unknown enclosure',
             'unique' => $unique,
             'use'    => $unique ? ['address', $n['address']] : ['device', $n['dev']],
+            'kind'   => $kind,
+            'hba'    => $kind === 'hba' ? sesext_hba_info($n['hctl'], $root) : null,
+            'note'   => $kind === 'hba' ? "The HBA's own virtual enclosure: it lists the HBA's ports and the drives on them, not a chassis (no fans, power supplies or temperatures). Monitoring it alerts you when a drive drops off a port." : '',
         ];
     }
     return ['nodes' => $nodes, 'enclosures' => $enclosures, 'by_address' => $by, 'duplicates' => $dups];
