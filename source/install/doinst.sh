@@ -22,6 +22,15 @@ DOCROOT="/usr/local/emhttp/plugins/sesmon-ext"
 # install that does not go through it (e.g. upgradepkg by hand) must still work
 mkdir -p $BOOT
 
+# An upgrade only overwrites files: pages and scripts that an earlier version had and this one no longer ships
+# would stay behind and keep being served. The package lists its own files in .manifest; remove any other file
+# below the web folder (the json link is not a file, start-failed is a flag of the service script). This runs
+# after the package is extracted, so a download that fails first leaves the installed version untouched.
+if [ -f $DOCROOT/.manifest ]; then
+    (cd $DOCROOT && find . -type f ! -name .manifest ! -name start-failed | LC_ALL=C sort | LC_ALL=C comm -23 - .manifest | while read -r f; do rm -f -- "$f"; done)
+    find $DOCROOT -mindepth 1 -depth -type d -empty -delete
+fi
+
 chmod 755 /etc/rc.d/rc.sesmon-ext
 chmod 755 $DOCROOT/scripts/*
 chmod 644 /etc/logrotate.d/sesmon-ext

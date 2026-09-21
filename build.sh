@@ -16,6 +16,11 @@ find package-temp -type f -exec chmod 644 {} \;
 chmod 755 package-temp/etc/rc.d/rc.sesmon-ext package-temp/install/doinst.sh
 chmod 755 package-temp/usr/local/emhttp/plugins/$NAME/scripts/*
 
+# the list of the package's own files below the web folder: install/doinst.sh removes what an earlier version
+# left behind and this one no longer ships (an upgrade only overwrites files)
+(cd "package-temp/usr/local/emhttp/plugins/$NAME" && find . -type f ! -name .manifest | LC_ALL=C sort > .manifest)
+chmod 644 "package-temp/usr/local/emhttp/plugins/$NAME/.manifest"
+
 # the archive must extract as root:root whoever builds it; bsdtar (macOS) and GNU tar
 # spell that differently, and COPYFILE_DISABLE keeps macOS from adding ._ files
 if tar --version 2>/dev/null | grep -qi bsdtar; then

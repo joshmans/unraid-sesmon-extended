@@ -36,8 +36,9 @@ First release of the fork of desertwitch's sesmon-unRAID (upstream version 2025.
 
 <!--
 before installing: refuse to install next to the original plugin (both would claim
-the sesmon package, the service name and the same log and json folders), and clear
-our stale package records
+the sesmon package, the service name and the same log and json folders). Nothing is
+changed here: this runs before the downloads, and a download that fails must leave
+an installed version working
 -->
 <FILE Run="/bin/bash">
 <INLINE>
@@ -50,17 +51,6 @@ if [ -e /boot/config/plugins/dwsesmon.plg ] || [ -e /var/log/plugins/dwsesmon.pl
     echo ""
     exit 1
 fi
-
-# The package file name has no arch/build part, so Slackware registers it under an
-# empty name: an upgrade leaves the old version's record behind, and reinstalling
-# the same version is skipped as "already installed". Forget our old records
-# (only the records: the new package overwrites the files).
-rm -f /var/log/packages/&name;-* /var/log/scripts/&name;-*
-
-# A package upgrade only overwrites files: pages and scripts that a later version dropped would stay
-# behind (and keep being served). The folder holds nothing but the package's files, the json link
-# that the package recreates, and a flag file, so start from an empty one.
-rm -rf &emhttp;
 exit 0
 </INLINE>
 </FILE>

@@ -15,4 +15,4 @@ First release of the fork of desertwitch's sesmon-unRAID (upstream version 2025.
 - "Restore previous version" under Advanced puts back the version a file had before its last save; restoring twice undoes it.
 - The service can be started, stopped and restarted from the Enclosures page, which also shows whether it is running.
 - The old file editor could read and write any file on the server; the new one is limited to the plugin's configuration folder.
-- Upgrades start from an empty web folder, so pages and scripts dropped by a newer version are not left behind.
+- Upgrades remove the pages and scripts that a newer version no longer ships. This happens in the package's own install script, after the download has been verified, so a download that fails leaves the installed version working.
