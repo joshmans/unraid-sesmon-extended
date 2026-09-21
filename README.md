@@ -18,8 +18,9 @@ the alerts. The configuration files stay editable. Details are [below](#the-page
 
 - **Needs:** an enclosure that supports SES, attached through a SAS HBA. The plugin installs sesmon 0.1.1 and
   `sg3_utils` (for `sg_ses`) itself.
-- **Tested on:** Unraid 7.4.0-beta.2, with a NetApp DS424IOM12A shelf. The plugin declares Unraid 7.0 as its minimum,
-  as the original does, but other versions have not been verified.
+- **Tested on:** Unraid 7.2 and newer, with a NetApp DS424IOM12A shelf and a Broadcom 430-16i (SAS3416) HBA. The plugin
+  declares Unraid 7.0 as its minimum, as the original does, but versions before 7.2 and other shelves and HBAs have not
+  been verified: please report what you see.
 - **It cannot be installed together with the original `dwsesmon` plugin** (both use the same `sesmon` package and
   service). The installer stops and tells you to remove that one first.
 
