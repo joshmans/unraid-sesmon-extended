@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "sesmon-ext">
 <!ENTITY author     "joshmans">
-<!ENTITY version    "2026.09.25">
+<!ENTITY version    "2026.09.25a">
 <!ENTITY launch     "Settings/sesext">
 <!ENTITY gitURL     "https://github.com/joshmans/unraid-sesmon-extended">
 <!ENTITY plgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/sesmon-ext.plg">
@@ -11,12 +11,12 @@
 <!ENTITY pkgURL     "https://raw.githubusercontent.com/joshmans/unraid-sesmon-extended/main/packages">
 <!ENTITY plgPATH    "/boot/config/plugins/&name;">
 <!ENTITY emhttp     "/usr/local/emhttp/plugins/&name;">
-<!ENTITY sha256     "ecda2c3f555e59e3660ae92f024c045948c0dd4bc09b67425a0090fbd06c20e6">
+<!ENTITY sha256     "cc7536bdafd8d613da40ae63a4e8afe0f55ac2c92f4284f0dfc8c3a5ed2ad9a7">
 <!ENTITY sesmonSHA  "b1509f17c03326d84d864a6563733089c17eab414cfbf36c1fbe88b1be95a783">
 <!ENTITY sg3SHA     "33c75c09545a695c745a92e4f8c170b82509f2b2ed419fe227167d18c82cb77c">
 ]>
 
-<PLUGIN name="&name;" Title="SCSI Enclosure Monitor Extended" author="&author;" version="&version;" launch="&launch;" pluginURL="&plgURL;" support="&gitURL;/issues" min="7.0">
+<PLUGIN name="&name;" Title="SCSI Enclosure Monitor Extended" author="&author;" version="&version;" launch="&launch;" pluginURL="&plgURL;" support="&gitURL;/issues" icon="server" min="7.0">
 
 <DESCRIPTION>
 Monitor SES-capable SCSI enclosures with sesmon, and configure it from a settings page: pick enclosures from the ones found on your server instead of typing SAS addresses. A fork of desertwitch's SCSI Enclosure Monitor for UNRAID.
@@ -24,6 +24,10 @@ Monitor SES-capable SCSI enclosures with sesmon, and configure it from a setting
 
 <CHANGES><![CDATA[
 # SCSI Enclosure Monitor Extended
+
+## 2026.09.25a
+
+- The Plugins page now shows a server icon for this plugin. No other change.
 
 ## 2026.09.25
 
