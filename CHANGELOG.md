@@ -1,5 +1,9 @@
 # SCSI Enclosure Monitor Extended
 
+## 2026.09.25a
+
+- The Plugins page now shows a server icon for this plugin. No other change.
+
 ## 2026.09.25
 
 - The plugin no longer ships the original sesmon project's mascot picture. The logo on the plugin's page is gone, and its Settings tile now uses a plain server icon instead of an image. Nothing else changes.
