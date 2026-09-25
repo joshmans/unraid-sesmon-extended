@@ -1,5 +1,9 @@
 # SCSI Enclosure Monitor Extended
 
+## 2026.09.25
+
+- The plugin no longer ships the original sesmon project's mascot picture. The logo on the plugin's page is gone, and its Settings tile now uses a plain server icon instead of an image. Nothing else changes.
+
 ## 2026.09.21a
 
 - The plugin calls itself **SCSI Enclosure Monitor Extended** on the Settings page (menu entry, page header, update check) and on the Dashboard tile's settings link, so it is not mistaken for the original plugin.
