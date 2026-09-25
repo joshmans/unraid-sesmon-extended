@@ -1,7 +1,7 @@
 Menu="Utilities"
 Type="xmenu"
 Title="SCSI Enclosure Monitor Extended"
-Icon="sesmon-ext.png"
+Icon="server"
 Tag="flash"
 Markdown="false"
 ---
@@ -43,7 +43,6 @@ Markdown="false"
         <tr id="ms-collapsible">
             <td style="width: 300px; text-align: center; vertical-align: middle; white-space: nowrap;">
                 <div style="margin:15px;">
-                    <img src="/plugins/sesmon-ext/images/sesmon-ext.png" alt="Logo" style="width: 160px;">
                     <div style="margin-top:10px;">
                     <span style="font-size:1.5rem;font-weight:bold;">sesmon Extended</span><br>
                     SCSI Enclosure Monitor Extended
