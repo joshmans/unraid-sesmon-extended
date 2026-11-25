@@ -20,6 +20,7 @@ jobs:
     uses: joshmans/unraid-tools/.github/workflows/plugin-release.yml@main
     with:
       plg: sesmon-ext.plg
-      test-command: tests/run.sh
+      # the plugin's PHP files open with the short tag, which Unraid's PHP enables and a stock runner's does not
+      test-command: mkdir -p /tmp/phpini && echo short_open_tag=1 > /tmp/phpini/short.ini && PHP_INI_SCAN_DIR=:/tmp/phpini tests/run.sh
       package-dir: dist
       publish: ${{ github.event_name != 'pull_request' }}
